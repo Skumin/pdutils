@@ -90,7 +90,7 @@ yearmon <- function(dates) {
   return(as.integer(ifelse(data.table::month(dates) <= 9, paste0(data.table::year(dates), '0', data.table::month(dates)), paste0(data.table::year(dates), data.table::month(dates)))))
 }
 
-ar <- function(df, pd_name, default_flag = "dumdef1") {
+AR <- function(df, pd_name, default_flag = "dumdef1") {
   temp <- copy(df)
   setDT(temp)
   temp <- temp[complete.cases(temp[, c(pd_name, default_flag), with = FALSE]), ]
@@ -129,7 +129,7 @@ minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'd
   lspred <- loess(defrate ~ group, data = df.unique, span = span)
   df[, loesspd := predict(lspred, newdata = df)]
   df.unique[, loesspd := predict(lspred, newdata = df.unique)]
-  ar_var <- ar(df, 'loesspd', default_flag = default_flag)
+  ar_var <- AR(df, 'loesspd', default_flag = default_flag)
   plt1 <- ggplot(df, aes_string(x = 'var'))+geom_density()+ylab('Density')+xlab(label1)+ggtitle('Ratio Distribution', paste0(label1, ', AR After Transform = ', round(ar_var, 4))) + theme_minimal()
   df <- df.unique[, c(1, 4:6)]
   df1 <- melt(df, id.vars = 'group')

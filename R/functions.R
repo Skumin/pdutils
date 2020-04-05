@@ -104,7 +104,7 @@ minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
   df <- copy(dat[, c(var, default_flag), with = FALSE])
   setDT(df)
   setkeyv(df, var)
-  df <- df[complete.cases(df*0)]
+  df <- df[complete.cases(df)]
   df[, id := .I]
   colnames(df) <- c('var', default_flag, 'cumweights')
   df[, group := .bincode(cumweights, breaks = seq(0, nrow(df), length = numbins + 1), include.lowest = TRUE)]

@@ -90,8 +90,8 @@ yearmon <- function(dates) {
   return(as.integer(ifelse(data.table::month(dates) <= 9, paste0(data.table::year(dates), '0', data.table::month(dates)), paste0(data.table::year(dates), data.table::month(dates)))))
 }
 
-AR <- function(df, pd_name, default_flag = "dumdef1") {
-  temp <- copy(df)
+AR <- function(dff, pd_name, default_flag = "dumdef1") {
+  temp <- copy(dff)
   setDT(temp)
   temp <- temp[complete.cases(temp[, c(pd_name, default_flag), with = FALSE]), ]
   setorderv(temp, cols = c(pd_name, default_flag), order = -1L)
@@ -101,15 +101,15 @@ AR <- function(df, pd_name, default_flag = "dumdef1") {
 }
 
 minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
-  df <- copy(dat[, c(var, default_flag), with = FALSE])
-  setDT(df)
-  setkeyv(df, var)
-  df <- df[complete.cases(df)]
-  df[, id := .I]
-  colnames(df) <- c('var', default_flag, 'cumweights')
-  df[, group := .bincode(cumweights, breaks = seq(0, nrow(df), length = numbins + 1), include.lowest = TRUE)]
-  df[, defrate := mean(get(eval(default_flag))), by = group]
-  return(df)
+  dff <- copy(dat[, c(var, default_flag), with = FALSE])
+  setDT(dff)
+  setkeyv(dff, var)
+  dff <- dff[complete.cases(dff)]
+  dff[, id := .I]
+  colnames(dff) <- c('var', default_flag, 'cumweights')
+  dff[, group := .bincode(cumweights, breaks = seq(0, nrow(dff), length = numbins + 1), include.lowest = TRUE)]
+  dff[, defrate := mean(get(eval(default_flag))), by = group]
+  return(dff)
 }
 
 minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'dumdef1', perconly = FALSE, label = NULL) {
@@ -118,24 +118,24 @@ minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'd
   } else {
     label1 <- label
   }
-  df <- minimodel(dat = dat, var = var, numbins = numbins, default_flag = default_flag)
-  vrs <- df[, median(var), group]
-  df.unique <- df[!duplicated(group)]
-  cls <- copy(colnames(df.unique))
-  df.unique[, var := NULL]
-  df.unique <- merge(df.unique, vrs, all.x = TRUE, by = 'group')
-  colnames(df.unique)[ncol(df.unique)] <- 'var'
-  df.unique <- df.unique[, cls, with = FALSE]
-  lspred <- loess(defrate ~ group, data = df.unique, span = span)
-  df[, loesspd := predict(lspred, newdata = df)]
-  df.unique[, loesspd := predict(lspred, newdata = df.unique)]
-  ar_var <- AR(df, 'loesspd', default_flag = default_flag)
-  plt1 <- ggplot(df, aes_string(x = 'var'))+geom_density()+ylab('Density')+xlab(label1)+ggtitle('Ratio Distribution', paste0(label1, ', AR After Transform = ', round(ar_var, 4))) + theme_minimal()
-  df <- df.unique[, c(1, 4:6)]
-  df1 <- melt(df, id.vars = 'group')
-  plt2 <- ggplot(df1, aes(x = group, y = value, colour = variable))+geom_point(data = df1[variable == 'defrate'])+geom_line(data = df1[variable == 'loesspd']) + scale_x_continuous(labels = function(x) paste0(floor(100 / numbins * x), '%')) + ggtitle('Transform in Percentile Space')+xlab('Percentile')+ylab('Default Rate (%)')+ theme_minimal()+theme(legend.position = 'none')+scale_y_continuous(labels = scales::percent)
-  df1 <- melt(df[, c('var', 'defrate', 'loesspd')], id.vars = 'var')
-  plt3 <- ggplot(df1, aes(x = var, y = value, colour = variable))+geom_point(data = df1[variable == 'defrate'])+geom_line(data = df1[variable == 'loesspd'])+ggtitle('Transform in Ratio Space - Median per Group')+xlab(label1)+ylab(NULL) + theme_minimal()+theme(legend.position = 'none')+scale_y_continuous(labels = scales::percent)
+  dff <- minimodel(dat = dat, var = var, numbins = numbins, default_flag = default_flag)
+  vrs <- dff[, median(var), group]
+  dff.unique <- dff[!duplicated(group)]
+  cls <- copy(colnames(dff.unique))
+  dff.unique[, var := NULL]
+  dff.unique <- merge(dff.unique, vrs, all.x = TRUE, by = 'group')
+  colnames(dff.unique)[ncol(dff.unique)] <- 'var'
+  dff.unique <- dff.unique[, cls, with = FALSE]
+  lspred <- loess(defrate ~ group, data = dff.unique, span = span)
+  dff[, loesspd := predict(lspred, newdata = dff)]
+  dff.unique[, loesspd := predict(lspred, newdata = dff.unique)]
+  ar_var <- AR(dff, 'loesspd', default_flag = default_flag)
+  plt1 <- ggplot(dff, aes_string(x = 'var'))+geom_density()+ylab('Density')+xlab(label1)+ggtitle('Ratio Distribution', paste0(label1, ', AR After Transform = ', round(ar_var, 4))) + theme_minimal()
+  dff <- dff.unique[, c(1, 4:6)]
+  dff1 <- melt(dff, id.vars = 'group')
+  plt2 <- ggplot(dff1, aes(x = group, y = value, colour = variable))+geom_point(data = dff1[variable == 'defrate'])+geom_line(data = dff1[variable == 'loesspd']) + scale_x_continuous(labels = function(x) paste0(floor(100 / numbins * x), '%')) + ggtitle('Transform in Percentile Space')+xlab('Percentile')+ylab('Default Rate (%)')+ theme_minimal()+theme(legend.position = 'none')+scale_y_continuous(labels = scales::percent)
+  dff1 <- melt(dff[, c('var', 'defrate', 'loesspd')], id.vars = 'var')
+  plt3 <- ggplot(dff1, aes(x = var, y = value, colour = variable))+geom_point(data = dff1[variable == 'defrate'])+geom_line(data = dff1[variable == 'loesspd'])+ggtitle('Transform in Ratio Space - Median per Group')+xlab(label1)+ylab(NULL) + theme_minimal()+theme(legend.position = 'none')+scale_y_continuous(labels = scales::percent)
   lay <- rbind(c(1, 1), c(2, 3))
   if(perconly) {
     return(plt2)

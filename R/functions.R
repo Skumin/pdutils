@@ -103,12 +103,13 @@ AR <- function(dff, pd_name, default_flag = "dumdef1") {
 minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
   dff <- copy(dat[, c(var, default_flag), with = FALSE])
   setDT(dff)
-  setkeyv(dff, var)
   dff <- dff[complete.cases(dff)]
+  setkeyv(dff, var)
   dff[, id := .I]
   colnames(dff) <- c('var', default_flag, 'cumweights')
   dff[, group := .bincode(cumweights, breaks = seq(0, nrow(dff), length = numbins + 1), include.lowest = TRUE)]
   dff[, defrate := mean(get(eval(default_flag))), by = group]
+  setDF(dff)
   return(dff)
 }
 
@@ -119,6 +120,7 @@ minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'd
     label1 <- label
   }
   dff <- minimodel(dat = dat, var = var, numbins = numbins, default_flag = default_flag)
+  setDT(dff)
   vrs <- dff[, median(var), group]
   dff.unique <- dff[!duplicated(group)]
   cls <- copy(colnames(dff.unique))

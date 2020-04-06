@@ -1,17 +1,17 @@
 Package: pdutils
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Utilities for Building Probability of Default Models
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Jan Polach
+Maintainer: Jan Polach <polach.honza@gmail.com>
+Description: The package provides a number of useful functions for building probability of default models of (mainly) corporate firms
+License: GPL-2
 Encoding: UTF-8
 LazyData: true
-Imports:
+Depends:
     data.table,
-    ggplot2,
-    pracma,
+    ggplot2
+Imports:
     gridExtra,
+    pracma,
     scales

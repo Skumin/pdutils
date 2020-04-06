@@ -1,1 +1,6 @@
 exportPattern("^[[:alpha:]]+")
+import(data.table)
+import(ggplot2)
+importFrom(gridExtra, grid.arrange)
+importFrom(scales, percent)
+importFrom(pracma, trapz)

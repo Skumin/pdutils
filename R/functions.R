@@ -1,7 +1,5 @@
 library(data.table)
-library(pracma)
 library(ggplot2)
-library(gridExtra)
 
 binomial_test <- function(n, p, a) {
   return(head(which(pbinom(c(0, seq_len(n)), n, p) >= a) - 1, 1))
@@ -15,8 +13,8 @@ bucket <- function(x, bins, na.rm = FALSE) {
   return(.bincode(x, quantile(x, probs = 0:bins/bins, na.rm = na.rm), right = TRUE, include.lowest = TRUE))
 }
 
-mann_whitney <- function(data, pd_name, default_flag = 'dumdef1') {
-  tmp <- copy(data)
+mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1') {
+  tmp <- copy(dat)
   setDT(tmp)
   cls <- setdiff(colnames(tmp), c(pd_name, default_flag))
   tmp[, eval(cls) := NULL]
@@ -27,8 +25,8 @@ mann_whitney <- function(data, pd_name, default_flag = 'dumdef1') {
   return(output)
 }
 
-ar_compare <- function(data, pd_name1, pd_name2, default_flag = 'dumdef1') {
-  tmp <- copy(data)
+ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
+  tmp <- copy(dat)
   setDT(tmp)
   cls <- setdiff(colnames(tmp), c(pd_name1, pd_name2, default_flag))
   tmp[, eval(cls) := NULL]
@@ -91,12 +89,12 @@ yearmon <- function(dates) {
 }
 
 AR <- function(dff, pd_name, default_flag = "dumdef1") {
-  temp <- copy(dff)
-  setDT(temp)
-  temp <- temp[complete.cases(temp[, c(pd_name, default_flag), with = FALSE]), ]
-  setorderv(temp, cols = c(pd_name, default_flag), order = -1L)
-  setDF(temp)
-  arv <- (pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(temp[, default_flag])/sum(temp[, default_flag])))- .5)/(pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(sort(temp[, default_flag], decreasing = TRUE))/sum(temp[, default_flag]))) - .5)
+  stopifnot(is.data.table(dff))
+  temp <- copy(dff[, c(pd_name, default_flag), with = FALSE])
+  temp <- temp[complete.cases(temp[, c(pd_name, default_flag), with = FALSE])]
+  temp <- as.matrix(temp)
+  temp <- temp[order(temp[, 1], temp[, 2], decreasing = TRUE), ]
+  arv <- (pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(temp[, 2])/sum(temp[, 2])))- .5)/(pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(sort(temp[, 2], decreasing = TRUE))/sum(temp[, 2]))) - .5)
   return(arv)
 }
 
@@ -132,12 +130,12 @@ minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'd
   dff[, loesspd := predict(lspred, newdata = dff)]
   dff.unique[, loesspd := predict(lspred, newdata = dff.unique)]
   ar_var <- AR(dff, 'loesspd', default_flag = default_flag)
-  plt1 <- ggplot(dff, aes_string(x = 'var'))+geom_density()+ylab('Density')+xlab(label1)+ggtitle('Ratio Distribution', paste0(label1, ', AR After Transform = ', round(ar_var, 4))) + theme_minimal()
+  plt1 <- ggplot(dff, aes_string(x = 'var')) + geom_density() + ylab('Density') + xlab(label1) + ggtitle('Ratio Distribution', paste0(label1, ', AR After Transform = ', round(ar_var, 4))) + theme_minimal()
   dff <- dff.unique[, c(1, 4:6)]
   dff1 <- melt(dff, id.vars = 'group')
-  plt2 <- ggplot(dff1, aes(x = group, y = value, colour = variable))+geom_point(data = dff1[variable == 'defrate'])+geom_line(data = dff1[variable == 'loesspd']) + scale_x_continuous(labels = function(x) paste0(floor(100 / numbins * x), '%')) + ggtitle('Transform in Percentile Space')+xlab('Percentile')+ylab('Default Rate (%)')+ theme_minimal()+theme(legend.position = 'none')+scale_y_continuous(labels = scales::percent)
+  plt2 <- ggplot(dff1, aes(x = group, y = value, colour = variable)) + geom_point(data = dff1[variable == 'defrate']) + geom_line(data = dff1[variable == 'loesspd']) + scale_x_continuous(labels = function(x) paste0(floor(100 / numbins * x), '%')) + ggtitle('Transform in Percentile Space') + xlab('Percentile') + ylab('Default Rate (%)') + theme_minimal() + theme(legend.position = 'none') + scale_y_continuous(labels = scales::percent)
   dff1 <- melt(dff[, c('var', 'defrate', 'loesspd')], id.vars = 'var')
-  plt3 <- ggplot(dff1, aes(x = var, y = value, colour = variable))+geom_point(data = dff1[variable == 'defrate'])+geom_line(data = dff1[variable == 'loesspd'])+ggtitle('Transform in Ratio Space - Median per Group')+xlab(label1)+ylab(NULL) + theme_minimal()+theme(legend.position = 'none')+scale_y_continuous(labels = scales::percent)
+  plt3 <- ggplot(dff1, aes(x = var, y = value, colour = variable)) + geom_point(data = dff1[variable == 'defrate']) + geom_line(data = dff1[variable == 'loesspd']) + ggtitle('Transform in Ratio Space - Median per Group') + xlab(label1) + ylab(NULL) + theme_minimal() + theme(legend.position = 'none') + scale_y_continuous(labels = scales::percent)
   lay <- rbind(c(1, 1), c(2, 3))
   if(perconly) {
     return(plt2)
@@ -149,7 +147,7 @@ minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'd
 compare_cap_plot <- function(dat, var1, var2, default_flag = 'dumdef1', lbl = NULL) {
   stopifnot(is.data.table(dat))
 
-  ars <- ar_compare(dat[!is.na(get(eval(var1))) & !is.na(get(eval(var2)))], var1, var2, default.flag = default_flag)[, c(4:5, 7)]
+  ars <- ar_compare(dat[!is.na(get(eval(var1))) & !is.na(get(eval(var2)))], var1, var2, default_flag = default_flag)[, c(4:5, 7)]
 
   tmp1 <- copy(dat[!is.na(get(eval(var1))) & !is.na(get(eval(var2))), c(var1, default_flag), with = FALSE])
   setorderv(tmp1, c(var1, default_flag), order = c(-1, -1))

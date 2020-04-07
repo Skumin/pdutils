@@ -4,7 +4,7 @@ Title: Utilities for Building Probability of Default Models
 Version: 0.1.0
 Author: Jan Polach
 Maintainer: Jan Polach <polach.honza@gmail.com>
-Description: The package provides a number of useful functions for building probability of default models of (mainly) corporate firms
+Description: The package provides a number of useful functions for building probability of default models of (mainly) corporate firms.
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
@@ -14,4 +14,6 @@ Depends:
 Imports:
     gridExtra,
     pracma,
-    scales
+    scales,
+    LDPD,
+    stats

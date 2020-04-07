@@ -174,3 +174,49 @@ compare_cap_plot <- function(dat, var1, var2, default_flag = 'dumdef1', lbl = NU
     ggplot(tmp, aes(x = PercSample, y = value, colour = Model, group = Model)) + geom_line() + xlab('Percentage of Sample Excluded') + ylab('Percentage of Defaulters Excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle(lbl, paste0('AR 1 = ', round(ars[, 1], 3), ', AR 2 = ', round(ars[, 2], 3), '; p-value = ', round(ars[, 3], 4))) + theme_minimal()
   }
 }
+
+cap_plot_data <- function(dat, var1, default_flag = 'dumdef1') {
+  stopifnot(is.data.table(dat))
+
+  ars <- AR(dff = dat, pd_name = var1, default_flag = default_flag)
+
+  tmp1 <- copy(dat[!is.na(get(eval(var1))), c(var1, default_flag), with = FALSE])
+  setorderv(tmp1, c(var1, default_flag), order = c(-1, -1))
+  tmp1[, perc_sample := .I/.N]
+  tmp1[, perc_default := cumsum(get(eval(default_flag)))/sum(get(eval(default_flag)))]
+
+  ndef <- tmp1[, sum(get(eval(default_flag)))]
+
+  tmp1 <- tmp1[, c('perc_sample', 'perc_default')]
+  tmp1[, Perfect := .I / ndef]
+  tmp1[, Perfect := pmin(Perfect, 1.0)]
+
+  return(as.data.frame(tmp1))
+}
+
+cap_plot <- function(dat, var1, default_flag = 'dumdef1', lbl = NULL) {
+  stopifnot(is.data.table(dat))
+
+  arv <- AR(dff = dat, pd_name = var1, default_flag = default_flag)
+  tmp <- cap_plot_data(dat, var1 = var1, default_flag = default_flag)
+
+  colnames(tmp)[1:2] <- c('PercSample', var1)
+  tmp <- melt(tmp, id.vars = 1, variable.name = 'Model')
+  tmp[, Model := factor(Model, levels = c(var1, 'Perfect'))]
+
+  if(is.null(lbl)) {
+    ggplot(tmp, aes(x = PercSample, y = value, colour = Model, group = Model)) + geom_line() + xlab('Percentage of Sample Excluded') + ylab('Percentage of Defaulters Excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle('CAP Plot', paste0('AR = ', round(arv, 3))) + theme_minimal()
+  } else {
+    ggplot(tmp, aes(x = PercSample, y = value, colour = Model, group = Model)) + geom_line() + xlab('Percentage of Sample Excluded') + ylab('Percentage of Defaulters Excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle(lbl, paste0('AR = ', round(arv, 3))) + theme_minimal()
+  }
+}
+
+create_dummy_sample <- function(size, mean_pd, ar_target) {
+  tmp <- data.table(pdo = pnorm(rnorm(size, qnorm(mean_pd), 1)))
+  tmp[, pd := LDPD::QMMRecalibrate(mean_pd, pdo, rep(1, size), AR.target = ar_target)$condPD.ac]
+  tmp[, default := rbinom(size, 1, pd)]
+  tmp[, pdo := NULL]
+  tmp <- tmp[sample(seq_len(size), size, replace = FALSE)]
+  tmp[, id := .I]
+  return(as.data.frame(tmp[, c(3, 1, 2)]))
+}

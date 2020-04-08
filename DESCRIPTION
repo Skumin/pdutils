@@ -16,4 +16,8 @@ Imports:
     pracma,
     scales,
     LDPD,
-    stats
+    stats,
+    Rcpp
+LinkingTo:
+    Rcpp,
+    RcppArmadillo

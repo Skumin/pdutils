@@ -98,6 +98,14 @@ AR <- function(dff, pd_name, default_flag = "dumdef1") {
   return(arv)
 }
 
+AR_vec <- function(pd, default) {
+  temp <- matrix(c(pd, default), ncol = 2, byrow = FALSE)
+  temp <- temp[complete.cases(temp), ]
+  temp <- temp[order(temp[, 1], temp[, 2], decreasing = TRUE), ]
+  arv <- (pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(temp[, 2])/sum(temp[, 2])))- .5)/(pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(sort(temp[, 2], decreasing = TRUE))/sum(temp[, 2]))) - .5)
+  return(arv)
+}
+
 minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
   dff <- copy(dat[, c(var, default_flag), with = FALSE])
   setDT(dff)
@@ -194,20 +202,33 @@ cap_plot_data <- function(dat, var1, default_flag = 'dumdef1') {
   return(as.data.frame(tmp1))
 }
 
-cap_plot <- function(dat, var1, default_flag = 'dumdef1', lbl = NULL) {
+cap_plot <- function(dat, var1, default_flag = 'dumdef1', col1 = NULL, col2 = NULL, lbl = NULL) {
   stopifnot(is.data.table(dat))
+
+  if(is.null(col1)) {
+    colour1 <- '#F8766D'
+  } else {
+    colour1 <- col1
+  }
+
+  if(is.null(col2)) {
+    colour2 <- '#00BFC4'
+  } else {
+    colour2 <- col2
+  }
 
   arv <- AR(dff = dat, pd_name = var1, default_flag = default_flag)
   tmp <- cap_plot_data(dat, var1 = var1, default_flag = default_flag)
+  setDT(tmp)
 
   colnames(tmp)[1:2] <- c('PercSample', var1)
   tmp <- melt(tmp, id.vars = 1, variable.name = 'Model')
   tmp[, Model := factor(Model, levels = c(var1, 'Perfect'))]
 
   if(is.null(lbl)) {
-    ggplot(tmp, aes(x = PercSample, y = value, colour = Model, group = Model)) + geom_line() + xlab('Percentage of Sample Excluded') + ylab('Percentage of Defaulters Excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle('CAP Plot', paste0('AR = ', round(arv, 3))) + theme_minimal()
+    ggplot(tmp, aes(x = PercSample, y = value, colour = Model, group = Model)) + scale_colour_manual(values = c(colour1, colour2)) + geom_abline(slope = 1, intercept = 0, linetype = 2, colour = 'black') + geom_line() + xlab('Percentage of Sample Excluded') + ylab('Percentage of Defaulters Excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle('CAP Plot', paste0('AR = ', round(arv, 3))) + theme_minimal()
   } else {
-    ggplot(tmp, aes(x = PercSample, y = value, colour = Model, group = Model)) + geom_line() + xlab('Percentage of Sample Excluded') + ylab('Percentage of Defaulters Excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle(lbl, paste0('AR = ', round(arv, 3))) + theme_minimal()
+    ggplot(tmp, aes(x = PercSample, y = value, colour = Model, group = Model)) + scale_colour_manual(values = c(colour1, colour2)) + geom_abline(slope = 1, intercept = 0, linetype = 2, colour = 'black') + geom_line() + xlab('Percentage of Sample Excluded') + ylab('Percentage of Defaulters Excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle(lbl, paste0('AR = ', round(arv, 3))) + theme_minimal()
   }
 }
 
@@ -219,4 +240,100 @@ create_dummy_sample <- function(size, mean_pd, ar_target) {
   tmp <- tmp[sample(seq_len(size), size, replace = FALSE)]
   tmp[, id := .I]
   return(as.data.frame(tmp[, c(3, 1, 2)]))
+}
+
+
+crossover_deleq <- function(mat, newmat, cr) {
+  return((1 - cr) * mat + cr * newmat)
+}
+
+isapprox <- function(x, y, atol = 0, rtol = sqrt(.Machine$double.eps)) {
+  return(x == y | (is.finite(x) & is.finite(y) & abs(x - y) <= max(atol, rtol * max(abs(x), abs(y)))))
+}
+
+deleq <- function(fun, ..., NP, boxbounds, Emat, constr, x0 = NULL, cr = 0.7, f.param = 0.9, maxgen = 100, show.progress = TRUE) {
+  if(!is.matrix(boxbounds) | ncol(boxbounds) != 2) {
+    stop("'boxbounds' must be a two-column matrix.")
+  }
+  if(!is.matrix(Emat)) {
+    stop("'Emat' must be a matrix.")
+  }
+  if(ncol(Emat) != nrow(boxbounds)) {
+    stop("The number of rows of 'boxbounds' must be the same as the number of columns of 'EMat'.")
+  }
+  if(!is.matrix(constr)) {
+    stop("'constr' must be a matrix.")
+  }
+  if(nrow(constr) != nrow(Emat)) {
+    stop("Number of rows of 'constr' must be the same as that of 'Emat'.")
+  }
+  if(maxgen < 1 | maxgen %% 1 != 0) {
+    stop("'maxgen' must be an integer greater than 0.")
+  }
+  if(cr < 0 | cr > 1) {
+    stop("'cr' must be between 0 and 1.")
+  }
+  if(f.param < 0 | f.param > 1) {
+    stop("'f.param' must be between 0 and 1.")
+  }
+  if(qr(Emat %*% t(Emat))$rank < nrow(Emat) & is.null(x0)) {
+    stop("'Emat' * transpose('Emat') is singular and you have not provided an 'x0'.")
+  }
+  if(NP < nrow(boxbounds) * 10) {
+    warning("'NP' is recommended to be at least 10 times the number of parameters.")
+  }
+  if(!is.null(x0)) {
+    if(!is.matrix(x0) | ncol(x0) > 1) {
+      stop("'x0' must be a one-column matrix.")
+    }
+    if(any(abs(Emat %*% x0 - constr) > sqrt(.Machine$double.eps))) {
+      stop("'x0' does not satisfy the equality constraint(s).")
+    }
+  }
+  gen <- 1
+  if(is.null(x0)) {
+    mat <- gen_init_pop(NP = NP, boxbounds = boxbounds, Emat = Emat, constr = constr)
+  } else {
+    mat <- gen_init_pop_x0(NP = NP, boxbounds = boxbounds, Emat = Emat, constr = constr, x0 = x0)
+  }
+  funvals <- apply(X = mat, MARGIN = 1, FUN = fun, ...)
+  rbest <- which.max(funvals)
+  trugen <- maxgen
+  while(gen <= trugen) {
+    if(show.progress) {
+      print(paste0('Generation ', gen))
+    }
+    pbest <- rbest
+    pbest_ind <- mat[pbest, ]
+    pbest_val <- fun(pbest_ind, ...)
+    newmat <- mutate_deleq(mat = mat, boxbounds = boxbounds, fParam = f.param)
+    newmat <- crossover_deleq(mat = mat, newmat = newmat, cr = cr)
+    funvals1 <- apply(X = newmat, MARGIN = 1, FUN = fun, ...)
+    mat[funvals1 > funvals, ] <- newmat[funvals1 > funvals, ]
+    funvals <- ifelse(funvals1 > funvals, funvals1, funvals)
+    rbest <- which.max(funvals)
+    if(!any(isapprox(Emat %*% matrix(mat[rbest, ], ncol = 1), constr))) {
+      if(show.progress) {
+        print('* Unfeasible, projecting back.')
+      }
+      trugen <- trugen - 1
+      if(gen <= trugen) {
+        projmat <- project_population(mat = mat, Emat = Emat, constr = constr)
+        funvals1 <- apply(X = projmat, MARGIN = 1, FUN = fun, ...)
+        rbest <- which.max(funvals1)
+        if(pbest_val > fun(projmat[rbest, ], ...)) {
+          projmat[rbest, ] <- pbest_ind
+          rbest <- pbest
+        }
+        mat <- projmat
+      } else {
+        mat[rbest, ] <- pbest_ind
+      }
+    }
+    gen <- gen + 1
+    if(show.progress) {
+      print(paste0("** Value = ", funvals[rbest]))
+    }
+  }
+  return(list(params = mat[rbest, ], value = fun(mat[rbest, ], ...), generations = trugen))
 }

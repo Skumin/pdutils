@@ -91,7 +91,8 @@ yearmon <- function(dates) {
 AR <- function(dff, pd_name, default_flag = "dumdef1") {
   stopifnot(is.data.table(dff))
   temp <- copy(dff[, c(pd_name, default_flag), with = FALSE])
-  temp <- temp[complete.cases(temp[, c(pd_name, default_flag), with = FALSE])]
+  ids <- complete.cases(temp[, c(pd_name, default_flag), with = FALSE])
+  temp <- temp[ids]
   temp <- as.matrix(temp)
   temp <- temp[order(temp[, 1], temp[, 2], decreasing = TRUE), ]
   arv <- (pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(temp[, 2])/sum(temp[, 2])))- .5)/(pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(sort(temp[, 2], decreasing = TRUE))/sum(temp[, 2]))) - .5)

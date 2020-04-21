@@ -40,7 +40,8 @@ fpd <- function(cpds) {
   if(any(cpds <= 0)) {
     stop('Cumulative default probabilities must be greater than zero.')
   }
-  return(c(cpds[1], sapply(seq_along(cpds)[-length(cpds)], function(x) 1 - (1 - cpds[x + 1])/(1 - cpds[x]))))
+  fpds <- c(cpds[1], sapply(seq_along(cpds)[-length(cpds)], function(x) 1 - (1 - cpds[x + 1])/(1 - cpds[x])))
+  return(fpds)
 }
 
 

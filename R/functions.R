@@ -33,7 +33,6 @@ cpd <- function(apds, tenors = NULL) {
   }
 }
 
-<<<<<<< HEAD
 fpd <- function(cpds) {
   if(any(diff(cpds) <= 0)) {
     stop('Cumulative default probabilities must be increasing.')
@@ -45,9 +44,6 @@ fpd <- function(cpds) {
   return(fpds)
 }
 
-
-=======
->>>>>>> 2cb836ed130c5a2838259f8464b183fdc4ae116c
 binomial_test <- function(n, p, a) {
   return(head(which(pbinom(c(0, seq_len(n)), n, p) >= a) - 1, 1))
 }

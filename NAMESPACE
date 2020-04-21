@@ -1,11 +1,8 @@
-<<<<<<< HEAD
 export(apd)
 export(cpd)
 export(fpd)
-=======
 export(cpd)
 export(apd)
->>>>>>> 2cb836ed130c5a2838259f8464b183fdc4ae116c
 export(binomial_test)
 export(binomial_test_full)
 export(bucket)

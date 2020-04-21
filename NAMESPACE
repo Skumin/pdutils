@@ -1,3 +1,5 @@
+export(cpd)
+export(apd)
 export(binomial_test)
 export(binomial_test_full)
 export(bucket)

@@ -1,6 +1,49 @@
 library(data.table)
 library(ggplot2)
 
+apd <- function(cpds, tenors = NULL) {
+  if(any(diff(cpds) <= 0)) {
+    stop('Cumulative default probabilities must be increasing.')
+  }
+  if(any(cpds <= 0)) {
+    stop('Cumulative default probabilities must be greater than zero.')
+  }
+  if(is.null(tenors)) {
+    tnrs <- seq_along(cpds)
+  } else {
+    tnrs <- tenors
+  }
+  return(1 - (1 - cpds)^(1/tnrs))
+}
+
+cpd <- function(apds, tenors = NULL) {
+  if(any(apds <= 0)) {
+    stop('Annualized default probabilities must be greater than zero.')
+  }
+  if(is.null(tenors)) {
+    tnrs <- seq_along(apds)
+  } else {
+    tnrs <- tenors
+  }
+  cpds <- 1 - (1 - apds)^tnrs
+  if(any(diff(cpds) <= 0)) {
+    stop('The annualized default probabilities result in non-increasing cumulative defaut probabilities.')
+  } else {
+    return(cpds)
+  }
+}
+
+fpd <- function(cpds) {
+  if(any(diff(cpds) <= 0)) {
+    stop('Cumulative default probabilities must be increasing.')
+  }
+  if(any(cpds <= 0)) {
+    stop('Cumulative default probabilities must be greater than zero.')
+  }
+  return(c(cpds[1], sapply(seq_along(cpds)[-length(cpds)], function(x) 1 - (1 - cpds[x + 1])/(1 - cpds[x]))))
+}
+
+
 binomial_test <- function(n, p, a) {
   return(head(which(pbinom(c(0, seq_len(n)), n, p) >= a) - 1, 1))
 }

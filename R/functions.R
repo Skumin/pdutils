@@ -57,27 +57,31 @@ bucket <- function(x, bins, na.rm = FALSE) {
 }
 
 mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1') {
-  tmp <- copy(dat)
-  setDT(tmp)
+  stopifnot(is.data.table(dat))
   dflt_col <- default_flag
-  cls <- setdiff(colnames(tmp), c(pd_name, dflt_col))
-  tmp[, eval(cls) := NULL]
+  tmp <- copy(dat[, c(pd_name, dflt_col), with = FALSE])
   all <- nrow(tmp)
   defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
-  tmp[, rank := frank(get(eval(pd_name)))]
+  tmp[, rank := frank(get(eval(pd_name)), ties.method = 'average')]
   output <- (as.numeric(tmp[get(eval(dflt_col)) == 1, sum(rank)]) - defaults * (defaults + 1) / 2) / defaults / (all - defaults)
   return(output)
+}
+
+# AR defined here using Mann Whitney because it handles ties properly; if the number is large the original method overestimates AR
+AR <- function(dff, pd_name, default_flag = "dumdef1") {
+  return(mann_whitney(dat = dff, pd_name = pd_name, default_flag = default_flag) * 2 - 1)
 }
 
 ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
   tmp <- copy(dat)
   setDT(tmp)
-  cls <- setdiff(colnames(tmp), c(pd_name1, pd_name2, default_flag))
+  .dflt_col <- default_flag
+  cls <- setdiff(colnames(tmp), c(pd_name1, pd_name2, .dflt_col))
   tmp[, eval(cls) := NULL]
-  MW1 <- mann_whitney(tmp, pd_name1, default_flag)
-  MW2 <- mann_whitney(tmp, pd_name2, default_flag)
+  MW1 <- mann_whitney(tmp, pd_name1, .dflt_col)
+  MW2 <- mann_whitney(tmp, pd_name2, .dflt_col)
   all <- nrow(tmp)
-  defaults <- as.numeric(tmp[, sum(get(eval(default_flag)))])
+  defaults <- as.numeric(tmp[, sum(get(eval(.dflt_col)))])
   nodefaults <- all - defaults
 
   setorderv(tmp, pd_name1)
@@ -85,8 +89,8 @@ ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
   setorderv(tmp, pd_name2)
   tmp[, rank2 := .I]
 
-  data.default <- copy(tmp[get(eval(default_flag)) == 1])
-  data.nodefault <- copy(tmp[get(eval(default_flag)) == 0])
+  data.default <- copy(tmp[get(eval(.dflt_col)) == 1])
+  data.nodefault <- copy(tmp[get(eval(.dflt_col)) == 0])
 
   data.default[, rank2.d := .I]
   setorderv(data.default, pd_name1)
@@ -132,24 +136,24 @@ yearmon <- function(dates) {
   return(as.integer(ifelse(data.table::month(dates) <= 9, paste0(data.table::year(dates), '0', data.table::month(dates)), paste0(data.table::year(dates), data.table::month(dates)))))
 }
 
-AR <- function(dff, pd_name, default_flag = "dumdef1") {
-  stopifnot(is.data.table(dff))
-  temp <- copy(dff[, c(pd_name, default_flag), with = FALSE])
-  ids <- complete.cases(temp[, c(pd_name, default_flag), with = FALSE])
-  temp <- temp[ids]
-  temp <- as.matrix(temp)
-  temp <- temp[order(temp[, 1], temp[, 2], decreasing = TRUE), ]
-  arv <- (pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(temp[, 2])/sum(temp[, 2])))- .5)/(pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(sort(temp[, 2], decreasing = TRUE))/sum(temp[, 2]))) - .5)
-  return(arv)
-}
+# AR <- function(dff, pd_name, default_flag = "dumdef1") {
+#   stopifnot(is.data.table(dff))
+#   temp <- copy(dff[, c(pd_name, default_flag), with = FALSE])
+#   ids <- complete.cases(temp[, c(pd_name, default_flag), with = FALSE])
+#   temp <- temp[ids]
+#   temp <- as.matrix(temp)
+#   temp <- temp[order(temp[, 1], temp[, 2], decreasing = TRUE), ]
+#   arv <- (pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(temp[, 2])/sum(temp[, 2])))- .5)/(pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(sort(temp[, 2], decreasing = TRUE))/sum(temp[, 2]))) - .5)
+#   return(arv)
+# }
 
-AR_vec <- function(pd, default) {
-  temp <- matrix(c(pd, default), ncol = 2, byrow = FALSE)
-  temp <- temp[complete.cases(temp), ]
-  temp <- temp[order(temp[, 1], temp[, 2], decreasing = TRUE), ]
-  arv <- (pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(temp[, 2])/sum(temp[, 2])))- .5)/(pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(sort(temp[, 2], decreasing = TRUE))/sum(temp[, 2]))) - .5)
-  return(arv)
-}
+# AR_vec <- function(pd, default) {
+#   temp <- matrix(c(pd, default), ncol = 2, byrow = FALSE)
+#   temp <- temp[complete.cases(temp), ]
+#   temp <- temp[order(temp[, 1], temp[, 2], decreasing = TRUE), ]
+#   arv <- (pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(temp[, 2])/sum(temp[, 2])))- .5)/(pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(sort(temp[, 2], decreasing = TRUE))/sum(temp[, 2]))) - .5)
+#   return(arv)
+# }
 
 minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
   dff <- copy(dat[, c(var, default_flag), with = FALSE])

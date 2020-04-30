@@ -59,12 +59,13 @@ bucket <- function(x, bins, na.rm = FALSE) {
 mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1') {
   tmp <- copy(dat)
   setDT(tmp)
-  cls <- setdiff(colnames(tmp), c(pd_name, default_flag))
+  dflt_col <- default_flag
+  cls <- setdiff(colnames(tmp), c(pd_name, dflt_col))
   tmp[, eval(cls) := NULL]
   all <- nrow(tmp)
-  defaults <- as.numeric(tmp[, sum(get(eval(default_flag)))])
+  defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
   tmp[, rank := frank(get(eval(pd_name)))]
-  output <- (as.numeric(tmp[get(eval(default_flag)) == 1, sum(rank)]) - defaults * (defaults + 1) / 2) / defaults / (all - defaults)
+  output <- (as.numeric(tmp[get(eval(dflt_col)) == 1, sum(rank)]) - defaults * (defaults + 1) / 2) / defaults / (all - defaults)
   return(output)
 }
 

@@ -17,7 +17,8 @@ Imports:
     scales,
     LDPD,
     stats,
-    Rcpp
+    Rcpp,
+    pROC
 LinkingTo:
     Rcpp,
     RcppArmadillo

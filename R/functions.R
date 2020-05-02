@@ -132,6 +132,20 @@ ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
   return(output)
 }
 
+ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf.level = 0.95) {
+  tmp <- copy(dat)
+  setDT(tmp)
+  .dflt_col <- default_flag
+  cls <- setdiff(colnames(tmp), c(pd_name, .dflt_col))
+  tmp[, eval(cls) := NULL]
+
+  roc_profile <- pROC::roc(tmp[, get(eval(.dflt_col))], tmp[, get(eval(pd_name))], quiet = TRUE)
+  cis <- pROC::ci.auc(roc_profile, conf.level = conf.level, quiet = TRUE)
+  cis <- as.numeric(cis)[-2]
+
+  return(pmax(pmin(c(2 * cis[1] - 1, 2 * cis[2] - 1), 1), 0))
+}
+
 yearmon <- function(dates) {
   return(as.integer(ifelse(data.table::month(dates) <= 9, paste0(data.table::year(dates), '0', data.table::month(dates)), paste0(data.table::year(dates), data.table::month(dates)))))
 }
@@ -156,14 +170,15 @@ yearmon <- function(dates) {
 # }
 
 minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
-  dff <- copy(dat[, c(var, default_flag), with = FALSE])
+  dflt_col <- default_flag
+  dff <- copy(dat[, c(var, dflt_col), with = FALSE])
   setDT(dff)
   dff <- dff[complete.cases(dff)]
   setkeyv(dff, var)
   dff[, id := .I]
-  colnames(dff) <- c('var', default_flag, 'cumweights')
+  colnames(dff) <- c('var', dflt_col, 'cumweights')
   dff[, group := .bincode(cumweights, breaks = seq(0, nrow(dff), length = numbins + 1), include.lowest = TRUE)]
-  dff[, defrate := mean(get(eval(default_flag))), by = group]
+  dff[, defrate := mean(get(eval(dflt_col))), by = group]
   setDF(dff)
   return(dff)
 }
@@ -203,17 +218,24 @@ minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'd
 
 compare_cap_plot <- function(dat, var1, var2, default_flag = 'dumdef1', lbl = NULL) {
   stopifnot(is.data.table(dat))
+  if(var1 == var2) {
+    stop("'var1' and 'var2' have to differ.")
+  }
 
-  ars <- ar_compare(dat[!is.na(get(eval(var1))) & !is.na(get(eval(var2)))], var1, var2, default_flag = default_flag)[, c(4:5, 7)]
+  dft_col <- default_flag
 
-  tmp1 <- copy(dat[!is.na(get(eval(var1))) & !is.na(get(eval(var2))), c(var1, default_flag), with = FALSE])
-  setorderv(tmp1, c(var1, default_flag), order = c(-1, -1))
+  ars <- ar_compare(dat[!is.na(get(eval(var1))) & !is.na(get(eval(var2)))], var1, var2, default_flag = dflt_col)[, c(4:5, 7)]
+
+  tmp1 <- copy(dat[!is.na(get(eval(var1))) & !is.na(get(eval(var2))), c(var1, dflt_col), with = FALSE])
+  #setorderv(tmp1, c(var1, dflt_col), order = c(-1, -1))
+  setorderv(tmp1, c(var1), order = c(-1))
   tmp1[, perc_sample := .I/.N]
-  tmp1[, perc_default := cumsum(get(eval(default_flag)))/sum(get(eval(default_flag)))]
+  tmp1[, perc_default := cumsum(get(eval(dflt_col)))/sum(get(eval(dflt_col)))]
 
-  tmp2 <- copy(dat[!is.na(get(eval(var1))) & !is.na(get(eval(var2))), c(var2, default_flag), with = FALSE])
-  setorderv(tmp2, c(var2, default_flag), order = c(-1, -1))
-  tmp2[, perc_default := cumsum(get(eval(default_flag)))/sum(get(eval(default_flag)))]
+  tmp2 <- copy(dat[!is.na(get(eval(var1))) & !is.na(get(eval(var2))), c(var2, dflt_col), with = FALSE])
+  #setorderv(tmp2, c(var2, dflt_col), order = c(-1, -1))
+  setorderv(tmp2, c(var2), order = c(-1))
+  tmp2[, perc_default := cumsum(get(eval(dflt_col)))/sum(get(eval(dflt_col)))]
 
   tmp <- tmp1[, c('perc_sample', 'perc_default')]
   tmp[, `Model 2` := tmp2$perc_default]
@@ -234,15 +256,18 @@ compare_cap_plot <- function(dat, var1, var2, default_flag = 'dumdef1', lbl = NU
 
 cap_plot_data <- function(dat, var1, default_flag = 'dumdef1') {
   stopifnot(is.data.table(dat))
+  dflt_col <- default_flag
 
-  ars <- AR(dff = dat, pd_name = var1, default_flag = default_flag)
+  ars <- AR(dff = dat, pd_name = var1, default_flag = dflt_col)
 
-  tmp1 <- copy(dat[!is.na(get(eval(var1))), c(var1, default_flag), with = FALSE])
-  setorderv(tmp1, c(var1, default_flag), order = c(-1, -1))
+  tmp1 <- copy(dat[!is.na(get(eval(var1))), c(var1, dflt_col), with = FALSE])
+
+  #setorderv(tmp1, c(var1, dflt_col), order = c(-1, -1))
+  setorderv(tmp1, c(var1), order = c(-1))
   tmp1[, perc_sample := .I/.N]
-  tmp1[, perc_default := cumsum(get(eval(default_flag)))/sum(get(eval(default_flag)))]
+  tmp1[, perc_default := cumsum(get(eval(dflt_col)))/sum(get(eval(dflt_col)))]
 
-  ndef <- tmp1[, sum(get(eval(default_flag)))]
+  ndef <- tmp1[, sum(get(eval(dflt_col)))]
 
   tmp1 <- tmp1[, c('perc_sample', 'perc_default')]
   tmp1[, Perfect := .I / ndef]

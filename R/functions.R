@@ -139,6 +139,10 @@ ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf.level = 0.95) {
   cls <- setdiff(colnames(tmp), c(pd_name, .dflt_col))
   tmp[, eval(cls) := NULL]
 
+  if(length(unique(tmp[, get(eval(.dflt_col))])) == 1) {
+    return(as.numeric(c(NA, NA)))
+  }
+
   roc_profile <- pROC::roc(tmp[, get(eval(.dflt_col))], tmp[, get(eval(pd_name))], quiet = TRUE)
   cis <- pROC::ci.auc(roc_profile, conf.level = conf.level, quiet = TRUE)
   cis <- as.numeric(cis)[-2]

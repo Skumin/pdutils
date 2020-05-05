@@ -144,6 +144,11 @@ ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf.level = 0.95) {
   }
 
   roc_profile <- pROC::roc(tmp[, get(eval(.dflt_col))], tmp[, get(eval(pd_name))], quiet = TRUE)
+
+  if(as.numeric(roc_profile$auc) == 1) {
+    return(c(1, 1))
+  }
+
   cis <- pROC::ci.auc(roc_profile, conf.level = conf.level, quiet = TRUE)
   cis <- as.numeric(cis)[-2]
 
@@ -193,7 +198,8 @@ minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'd
   } else {
     label1 <- label
   }
-  dff <- minimodel(dat = dat, var = var, numbins = numbins, default_flag = default_flag)
+  dflt_col <- default_flag
+  dff <- minimodel(dat = dat, var = var, numbins = numbins, default_flag = dflt_col)
   setDT(dff)
   vrs <- dff[, median(var), group]
   dff.unique <- dff[!duplicated(group)]
@@ -205,7 +211,7 @@ minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'd
   lspred <- loess(defrate ~ group, data = dff.unique, span = span)
   dff[, loesspd := predict(lspred, newdata = dff)]
   dff.unique[, loesspd := predict(lspred, newdata = dff.unique)]
-  ar_var <- AR(dff, 'loesspd', default_flag = default_flag)
+  ar_var <- AR(dff, 'loesspd', default_flag = dflt_col)
   plt1 <- ggplot(dff, aes_string(x = 'var')) + geom_density() + ylab('Density') + xlab(label1) + ggtitle('Ratio Distribution', paste0(label1, ', AR After Transform = ', round(ar_var, 4))) + theme_minimal()
   dff <- dff.unique[, c(1, 4:6)]
   dff1 <- melt(dff, id.vars = 'group')

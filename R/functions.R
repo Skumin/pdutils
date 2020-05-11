@@ -132,7 +132,7 @@ ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
   return(output)
 }
 
-ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf.level = 0.95) {
+ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf_level = 0.95) {
   tmp <- copy(dat)
   setDT(tmp)
   .dflt_col <- default_flag
@@ -149,7 +149,7 @@ ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf.level = 0.95) {
     return(c(1, 1))
   }
 
-  cis <- pROC::ci.auc(roc_profile, conf.level = conf.level, quiet = TRUE)
+  cis <- pROC::ci.auc(roc_profile, conf.level = conf_level, quiet = TRUE)
   cis <- as.numeric(cis)[-2]
 
   return(pmax(pmin(c(2 * cis[1] - 1, 2 * cis[2] - 1), 1), 0))
@@ -326,6 +326,28 @@ create_dummy_sample <- function(size, mean_pd, ar_target) {
   return(as.data.frame(tmp[, c(3, 1, 2)]))
 }
 
+mean_ci <- function(x, conf_level = 0.95, na.rm = FALSE) {
+  if(!na.rm & any(is.na(x))) {
+    stop('There are NAs in the data and na.rm is FALSE.')
+  }
+  y <- x[!is.na(x)]
+  tst <- qt(p = 1 - (1 - conf_level) / 2, df = length(y) - 1)
+  return(c(mean(y) - tst * sd(y) / sqrt(length(y)), mean(y), mean(y) + tst * sd(y) / sqrt(length(y))))
+}
+
+weighted_mean_ci <- function(x, weights, conf_level = 0.95, na.rm = FALSE) {
+  if(!na.rm & any(is.na(x))) {
+    stop('There are NAs in the data and na.rm is FALSE.')
+  }
+  wts <- weights[!is.na(x)]
+  y <- x[!is.na(x)]
+  nx <- length(y)
+  vx <- Hmisc::wtd.var(y, wts, normwt = TRUE)
+  tstat <- weighted.mean(y, wts)/sqrt(vx/nx)
+  cint <- qt(1 - (1 - conf_level)/2, nx - 1)
+  cint <- tstat + c(-cint, cint)
+  return(c(cint[1] * sqrt(vx/nx), weighted.mean(y, wts), cint[2] * sqrt(vx/nx)))
+}
 
 crossover_deleq <- function(mat, newmat, cr) {
   return((1 - cr) * mat + cr * newmat)

@@ -18,7 +18,8 @@ Imports:
     LDPD,
     stats,
     Rcpp,
-    pROC
+    pROC,
+    Hmisc
 LinkingTo:
     Rcpp,
     RcppArmadillo

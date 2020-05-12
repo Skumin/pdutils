@@ -349,6 +349,58 @@ weighted_mean_ci <- function(x, weights, conf_level = 0.95, na.rm = FALSE) {
   return(c(cint[1] * sqrt(vx/nx), weighted.mean(y, wts), cint[2] * sqrt(vx/nx)))
 }
 
+woe <- function(dff, var, default_flag = 'dumdef1') {
+  stopifnot(is.data.table(dff))
+
+  dflt_col <- default_flag
+  tmp <- copy(dff[, c(var, dflt_col), with = FALSE])
+
+  if(!all(sort(unique(tmp[, get(eval(dflt_col))])) == c(0, 1))) {
+    stop('The default_flag column must only contain 0S and 1s.')
+  }
+
+  allobs <- nrow(tmp)
+  defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
+
+  tst <- setNames(tmp[, .N, by = list(get(eval(var)), get(eval(dflt_col)))], c('variable', dflt_col, 'count'))
+  tst[, categ := ifelse(get(eval(dflt_col)) == 0, 'good', 'bad')]
+  tst <- dcast(tst, variable ~ categ, value.var = 'count')
+
+  tst[, perc_bad := bad / defaults]
+  tst[, perc_good := good / (allobs - defaults)]
+
+  tst[, eval(c('perc_good', 'perc_bad')) := lapply(.SD, function(z) ifelse(is.na(z), 0, z)), .SDcols = c('perc_good', 'perc_bad')]
+  tst[, WOE := pmax(0, log(perc_bad) - log(perc_good))]
+  return(as.data.frame(setNames(tst[, .(variable, WOE)], c(var, 'woe'))))
+}
+
+info_value <- function(dff, var, default_flag = 'dumdef1') {
+  stopifnot(is.data.table(dff))
+
+  dflt_col <- default_flag
+  tmp <- copy(dff[, c(var, dflt_col), with = FALSE])
+
+  if(!all(sort(unique(tmp[, get(eval(dflt_col))])) == c(0, 1))) {
+    stop('The default_flag column must only contain 0S and 1s.')
+  }
+
+  allobs <- nrow(tmp)
+  defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
+
+  tst <- setNames(tmp[, .N, by = list(get(eval(var)), get(eval(dflt_col)))], c('variable', dflt_col, 'count'))
+  tst[, categ := ifelse(get(eval(dflt_col)) == 0, 'good', 'bad')]
+  tst <- dcast(tst, variable ~ categ, value.var = 'count')
+
+  tst[, perc_bad := bad / defaults]
+  tst[, perc_good := good / (allobs - defaults)]
+
+  tst[, eval(c('perc_good', 'perc_bad')) := lapply(.SD, function(z) ifelse(is.na(z), 0, z)), .SDcols = c('perc_good', 'perc_bad')]
+  tst[, WOE := pmax(0, log(perc_bad) - log(perc_good))]
+
+  tst[, iv := (perc_bad - perc_good) * WOE]
+  return(sum(tst$iv))
+}
+
 crossover_deleq <- function(mat, newmat, cr) {
   return((1 - cr) * mat + cr * newmat)
 }

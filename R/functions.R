@@ -73,11 +73,9 @@ AR <- function(dff, pd_name, default_flag = "dumdef1") {
 }
 
 ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
-  tmp <- copy(dat)
-  setDT(tmp)
+  stopifnot(is.data.table(dat))
   .dflt_col <- default_flag
-  cls <- setdiff(colnames(tmp), c(pd_name1, pd_name2, .dflt_col))
-  tmp[, eval(cls) := NULL]
+  tmp <- copy(dat[, c(pd_name1, pd_name2, .dflt_col), with = FALSE])
   MW1 <- mann_whitney(tmp, pd_name1, .dflt_col)
   MW2 <- mann_whitney(tmp, pd_name2, .dflt_col)
   all <- nrow(tmp)
@@ -133,11 +131,9 @@ ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
 }
 
 ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf_level = 0.95) {
-  tmp <- copy(dat)
-  setDT(tmp)
+  stopifnot(is.data.table(dat))
   .dflt_col <- default_flag
-  cls <- setdiff(colnames(tmp), c(pd_name, .dflt_col))
-  tmp[, eval(cls) := NULL]
+  tmp <- copy(dat[, c(pd_name, .dflt_col), with = FALSE])
 
   if(length(unique(tmp[, get(eval(.dflt_col))])) == 1) {
     return(as.numeric(c(NA, NA)))
@@ -370,7 +366,8 @@ woe <- function(dff, var, default_flag = 'dumdef1') {
   tst[, perc_good := good / (allobs - defaults)]
 
   tst[, eval(c('perc_good', 'perc_bad')) := lapply(.SD, function(z) ifelse(is.na(z), 0, z)), .SDcols = c('perc_good', 'perc_bad')]
-  tst[, WOE := pmax(0, log(perc_bad) - log(perc_good))]
+  tst[, WOE := log(perc_bad) - log(perc_good)]
+  tst[, WOE := ifelse(!is.finite(WOE), 0, WOE)]
   return(as.data.frame(setNames(tst[, .(variable, WOE)], c(var, 'woe'))))
 }
 
@@ -395,7 +392,8 @@ info_value <- function(dff, var, default_flag = 'dumdef1') {
   tst[, perc_good := good / (allobs - defaults)]
 
   tst[, eval(c('perc_good', 'perc_bad')) := lapply(.SD, function(z) ifelse(is.na(z), 0, z)), .SDcols = c('perc_good', 'perc_bad')]
-  tst[, WOE := pmax(0, log(perc_bad) - log(perc_good))]
+  tst[, WOE := log(perc_bad) - log(perc_good)]
+  tst[, WOE := ifelse(!is.finite(WOE), 0, WOE)]
 
   tst[, iv := (perc_bad - perc_good) * WOE]
   return(sum(tst$iv))

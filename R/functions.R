@@ -152,7 +152,7 @@ ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf_level = 0.95) {
 }
 
 yearmon <- function(dates) {
-  return(as.integer(ifelse(data.table::month(dates) <= 9, paste0(data.table::year(dates), '0', data.table::month(dates)), paste0(data.table::year(dates), data.table::month(dates)))))
+  return(as.integer(data.table::fifelse(data.table::month(dates) <= 9, paste0(data.table::year(dates), '0', data.table::month(dates)), paste0(data.table::year(dates), data.table::month(dates)))))
 }
 
 # AR <- function(dff, pd_name, default_flag = "dumdef1") {
@@ -250,7 +250,7 @@ compare_cap_plot <- function(dat, var1, var2, default_flag = 'dumdef1', lbl = NU
 
   colnames(tmp)[1:2] <- c('PercSample', 'Model 1')
   tmp <- melt(tmp, id.vars = 1, variable.name = 'Model')
-  tmp[, Model := ifelse(Model == 'Model 1', var1, var2)]
+  tmp[, Model := data.table::fifelse(Model == 'Model 1', var1, var2)]
   tmp[, Model := factor(Model, levels = c(var1, var2))]
 
   if(is.null(lbl)) {
@@ -359,15 +359,15 @@ woe <- function(dff, var, default_flag = 'dumdef1') {
   defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
 
   tst <- setNames(tmp[, .N, by = list(get(eval(var)), get(eval(dflt_col)))], c('variable', dflt_col, 'count'))
-  tst[, categ := ifelse(get(eval(dflt_col)) == 0, 'good', 'bad')]
+  tst[, categ := data.table::fifelse(get(eval(dflt_col)) == 0, 'good', 'bad')]
   tst <- dcast(tst, variable ~ categ, value.var = 'count')
 
   tst[, perc_bad := bad / defaults]
   tst[, perc_good := good / (allobs - defaults)]
 
-  tst[, eval(c('perc_good', 'perc_bad')) := lapply(.SD, function(z) ifelse(is.na(z), 0, z)), .SDcols = c('perc_good', 'perc_bad')]
+  tst[, eval(c('perc_good', 'perc_bad')) := lapply(.SD, function(z) data.table::fifelse(is.na(z), 0, z)), .SDcols = c('perc_good', 'perc_bad')]
   tst[, WOE := log(perc_bad) - log(perc_good)]
-  tst[, WOE := ifelse(!is.finite(WOE), 0, WOE)]
+  tst[, WOE := data.table::fifelse(!is.finite(WOE), 0, WOE)]
   return(as.data.frame(setNames(tst[, .(variable, WOE)], c(var, 'woe'))))
 }
 
@@ -385,15 +385,15 @@ info_value <- function(dff, var, default_flag = 'dumdef1') {
   defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
 
   tst <- setNames(tmp[, .N, by = list(get(eval(var)), get(eval(dflt_col)))], c('variable', dflt_col, 'count'))
-  tst[, categ := ifelse(get(eval(dflt_col)) == 0, 'good', 'bad')]
+  tst[, categ := data.table::fifelse(get(eval(dflt_col)) == 0, 'good', 'bad')]
   tst <- dcast(tst, variable ~ categ, value.var = 'count')
 
   tst[, perc_bad := bad / defaults]
   tst[, perc_good := good / (allobs - defaults)]
 
-  tst[, eval(c('perc_good', 'perc_bad')) := lapply(.SD, function(z) ifelse(is.na(z), 0, z)), .SDcols = c('perc_good', 'perc_bad')]
+  tst[, eval(c('perc_good', 'perc_bad')) := lapply(.SD, function(z) data.table::fifelse(is.na(z), 0, z)), .SDcols = c('perc_good', 'perc_bad')]
   tst[, WOE := log(perc_bad) - log(perc_good)]
-  tst[, WOE := ifelse(!is.finite(WOE), 0, WOE)]
+  tst[, WOE := data.table::fifelse(!is.finite(WOE), 0, WOE)]
 
   tst[, iv := (perc_bad - perc_good) * WOE]
   return(sum(tst$iv))
@@ -466,7 +466,7 @@ deleq <- function(fun, ..., NP, boxbounds, Emat, constr, x0 = NULL, cr = 0.7, f.
     newmat <- crossover_deleq(mat = mat, newmat = newmat, cr = cr)
     funvals1 <- apply(X = newmat, MARGIN = 1, FUN = fun, ...)
     mat[funvals1 > funvals, ] <- newmat[funvals1 > funvals, ]
-    funvals <- ifelse(funvals1 > funvals, funvals1, funvals)
+    funvals <- data.table::fifelse(funvals1 > funvals, funvals1, funvals)
     rbest <- which.max(funvals)
     if(!any(isapprox(Emat %*% matrix(mat[rbest, ], ncol = 1), constr))) {
       if(show.progress) {

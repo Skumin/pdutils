@@ -60,10 +60,10 @@ mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1') {
   stopifnot(is.data.table(dat))
   dflt_col <- default_flag
   tmp <- copy(dat[, c(pd_name, dflt_col), with = FALSE])
-  all <- nrow(tmp)
+  allobs <- nrow(tmp)
   defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
   tmp[, rank := frank(get(eval(pd_name)), ties.method = 'average')]
-  output <- (as.numeric(tmp[get(eval(dflt_col)) == 1, sum(rank)]) - defaults * (defaults + 1) / 2) / defaults / (all - defaults)
+  output <- (as.numeric(tmp[get(eval(dflt_col)) == 1, sum(rank)]) - defaults * (defaults + 1) / 2) / defaults / (allobs - defaults)
   return(output)
 }
 
@@ -78,9 +78,9 @@ ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
   tmp <- copy(dat[, c(pd_name1, pd_name2, .dflt_col), with = FALSE])
   MW1 <- mann_whitney(tmp, pd_name1, .dflt_col)
   MW2 <- mann_whitney(tmp, pd_name2, .dflt_col)
-  all <- nrow(tmp)
+  allobs <- nrow(tmp)
   defaults <- as.numeric(tmp[, sum(get(eval(.dflt_col)))])
-  nodefaults <- all - defaults
+  nodefaults <- allobs - defaults
 
   setorderv(tmp, pd_name1)
   tmp[, rank1 := .I]
@@ -126,7 +126,7 @@ ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
   AR1 <- 2 * MW1 - 1
   AR2 <- 2 * MW2 - 1
   diff <- AR1 - AR2
-  output <- data.frame(Group = c("all"), N = all, Ndef = defaults, AR1, AR2, diff, p.value = p)
+  output <- data.frame(Group = c("all"), N = allobs, Ndef = defaults, AR1, AR2, diff, p.value = p)
   return(output)
 }
 
@@ -152,7 +152,9 @@ ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf_level = 0.95) {
 }
 
 yearmon <- function(dates) {
-  return(as.integer(data.table::fifelse(data.table::month(dates) <= 9, paste0(data.table::year(dates), '0', data.table::month(dates)), paste0(data.table::year(dates), data.table::month(dates)))))
+  mnths <- data.table::month(dates)
+  yrs <- data.table::year(dates)
+  return(as.integer(data.table::fifelse(mnths <= 9, paste0(yrs, '0', mnths), paste0(yrs, mnths))))
 }
 
 # AR <- function(dff, pd_name, default_flag = "dumdef1") {
@@ -397,6 +399,26 @@ info_value <- function(dff, var, default_flag = 'dumdef1') {
 
   tst[, iv := (perc_bad - perc_good) * WOE]
   return(sum(tst$iv))
+}
+
+psi <- function(x1, x2) {
+  tmp1 <- data.table(x = x1)
+  tmp2 <- data.table(x = x2)
+
+  tmp1 <- tmp1[, .(Count1 = .N), x]
+  tmp2 <- tmp2[, .(Count2 = .N), x]
+
+  tst <- merge(tmp1, tmp2, by = 'x', all = TRUE)
+
+  if(any(is.na(tmp$Count1) | is.na(tmp$Count2))) {
+    warning('The two sets of values do not contain the same unique elements.')
+  }
+
+  tst[, Perc1 := Count1 / sum(Count1, na.rm = TRUE)]
+  tst[, Perc2 := Count2 / sum(Count2, na.rm = TRUE)]
+
+  tst[, `Partial PSI` := (Perc1 - Perc2) * log(Perc1 / Perc2)]
+  return(as.data.frame(tst))
 }
 
 crossover_deleq <- function(mat, newmat, cr) {

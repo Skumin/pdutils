@@ -60,6 +60,9 @@ mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1') {
   stopifnot(is.data.table(dat))
   dflt_col <- default_flag
   tmp <- copy(dat[, c(pd_name, dflt_col), with = FALSE])
+  if(any(sort(unique(unlist(tmp[, 2]))) != c(0, 1))) {
+    stop("The default_flag column must only contains 0s and 1s.")
+  }
   allobs <- nrow(tmp)
   defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
   tmp[, rank := frank(get(eval(pd_name)), ties.method = 'average')]
@@ -154,7 +157,7 @@ ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf_level = 0.95) {
 yearmon <- function(dates) {
   mnths <- data.table::month(dates)
   yrs <- data.table::year(dates)
-  return(as.integer(data.table::fifelse(mnths <= 9, paste0(yrs, '0', mnths), paste0(yrs, mnths))))
+  return(as.integer(data.table::fifelse(mnths <= 9, stringi::stri_c(yrs, '0', mnths), stringi::stri_c(yrs, mnths))))
 }
 
 # AR <- function(dff, pd_name, default_flag = "dumdef1") {

@@ -56,13 +56,23 @@ bucket <- function(x, bins, na.rm = FALSE) {
   return(.bincode(x, quantile(x, probs = 0:bins/bins, na.rm = na.rm), right = TRUE, include.lowest = TRUE))
 }
 
-mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1') {
+mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = FALSE) {
   stopifnot(is.data.table(dat))
   dflt_col <- default_flag
   tmp <- copy(dat[, c(pd_name, dflt_col), with = FALSE])
-  if(any(sort(unique(unlist(tmp[, 2]))) != c(0, 1))) {
+
+  if(any(!sort(unique(unlist(tmp[, 2]))) %in% c(0, 1))) {
     stop("The default_flag column must only contains 0s and 1s.")
   }
+
+  if(sum(complete.cases(tmp)) != nrow(tmp)) {
+    if(!na.rm) {
+      stop('There are NAs in the two columns and na.rm is FALSE.')
+    } else {
+      tmp <- tmp[complete.cases(tmp)]
+    }
+  }
+
   allobs <- nrow(tmp)
   defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
   tmp[, rank := frank(get(eval(pd_name)), ties.method = 'average')]
@@ -70,9 +80,40 @@ mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1') {
   return(output)
 }
 
+mann_whitney_vec <- function(pds, default_flag, na.rm = FALSE) {
+  if(any(!sort(unique(default_flag)) %in% c(0, 1))) {
+    stop("The default_flag column must only contains 0s and 1s.")
+  }
+
+  if(length(pds) != length(default_flag)) {
+    stop('pds and default_flag must have the same length')
+  }
+
+  if(sum(is.na(pds)) > 0 | sum(is.na(default_flag)) > 0) {
+    if(!na.rm) {
+      stop('There are NAs in the two columns and na.rm is FALSE.')
+    } else {
+      ids <- union(which(is.na(pds)), which(is.na(default_flag)))
+      pds <- pds[-ids]
+      default_flag <- default_flag[-ids]
+    }
+  }
+
+  allobs <- length(pds)
+  defaults <- sum(default_flag)
+  ranker <- frank(pds, ties.method = 'average')
+  output <- (sum(ranker[default_flag == 1]) - defaults * (defaults + 1) / 2) / defaults / (allobs - defaults)
+  return(output)
+}
+
 # AR defined here using Mann Whitney because it handles ties properly; if the number is large the original method overestimates AR
 AR <- function(dff, pd_name, default_flag = "dumdef1") {
   return(mann_whitney(dat = dff, pd_name = pd_name, default_flag = default_flag) * 2 - 1)
+}
+
+# Faster AR that takes vectors directly
+AR_vec <- function(pds, default_flag) {
+  return(mann_whitney_vec(pds = pds, default_flag = default_flag) * 2 - 1)
 }
 
 ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
@@ -272,8 +313,6 @@ cap_plot_data <- function(dat, var1, default_flag = 'dumdef1') {
   ars <- AR(dff = dat, pd_name = var1, default_flag = dflt_col)
 
   tmp1 <- copy(dat[!is.na(get(eval(var1))), c(var1, dflt_col), with = FALSE])
-
-  #setorderv(tmp1, c(var1, dflt_col), order = c(-1, -1))
   setorderv(tmp1, c(var1), order = c(-1))
   tmp1[, perc_sample := .I/.N]
   tmp1[, perc_default := cumsum(get(eval(dflt_col)))/sum(get(eval(dflt_col)))]

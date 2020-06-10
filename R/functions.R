@@ -228,10 +228,53 @@ minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
   setkeyv(dff, var)
   dff[, id := .I]
   colnames(dff) <- c('var', dflt_col, 'cumweights')
-  dff[, group := .bincode(cumweights, breaks = seq(0, nrow(dff), length = numbins + 1), include.lowest = TRUE)]
+  dff[, group := bucket(cumweights, bins = numbins)]
   dff[, defrate := mean(get(eval(dflt_col))), by = group]
   setDF(dff)
   return(dff)
+}
+
+trans_var_vec <- function(var, default_flag, numbins = 50, span = 0.75, na.rm = FALSE) {
+  if(any(!sort(unique(default_flag)) %in% c(0, 1))) {
+    stop("The default_flag column must only contains 0s and 1s.")
+  }
+
+  if(length(var) != length(default_flag)) {
+    stop('pds and default_flag must have the same length')
+  }
+
+  tbl <- data.table(varx = var, dflt = default_flag)
+  tbl[, id := .I]
+
+  tbl[, group := bucket(varx, bins = numbins, na.rm = TRUE)]
+  temp <- tbl[, .(defrate = mean(dflt, na.rm = TRUE)), by = group]
+  temp <- temp[!is.na(group)]
+  mdl <- loess(defrate ~ group, data = temp, span = span)
+  temp[, predl := predict(mdl)]
+  tbl <- merge(tbl, temp[, .(group, predl)], by = 'group', all.x = TRUE)
+  setorder(tbl, id)
+  return(tbl[, predl])
+}
+
+trans_var <- function(dat, var, numbins = 50, default_flag = 'dumdef1', span = 0.75, na.rm = FALSE) {
+  dflt_col <- default_flag
+  tbl <- copy(dat[, c(var, dflt_col), with = FALSE])
+  setDT(tbl)
+  colnames(tbl) <- c('varx', 'dflt')
+
+  if(any(!sort(unique(tbl[, dflt])) %in% c(0, 1))) {
+    stop("The default_flag column must only contains 0s and 1s.")
+  }
+
+  tbl[, id := .I]
+  tbl[, group := bucket(varx, bins = numbins, na.rm = TRUE)]
+  temp <- tbl[, .(defrate = mean(dflt, na.rm = TRUE)), by = group]
+  temp <- temp[!is.na(group)]
+  mdl <- loess(defrate ~ group, data = temp, span = span)
+  temp[, predl := predict(mdl)]
+  tbl <- merge(tbl, temp[, .(group, predl)], by = 'group', all.x = TRUE)
+  setorder(tbl, id)
+  return(tbl[, predl])
 }
 
 minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'dumdef1', perconly = FALSE, label = NULL) {
@@ -254,18 +297,47 @@ minimodel_plot <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'd
   dff[, loesspd := predict(lspred, newdata = dff)]
   dff.unique[, loesspd := predict(lspred, newdata = dff.unique)]
   ar_var <- AR(dff, 'loesspd', default_flag = dflt_col)
-  plt1 <- ggplot(dff, aes_string(x = 'var')) + geom_density() + ylab('Density') + xlab(label1) + ggtitle('Ratio Distribution', paste0(label1, ', AR After Transform = ', round(ar_var, 4))) + theme_minimal()
+  plt1 <- ggplot(dff, aes_string(x = 'var')) + geom_density() + ylab('Density') + xlab(label1) + ggtitle('Ratio distribution', paste0(label1, ', AR after transform = ', round(ar_var, 4))) + theme_minimal()
   dff <- dff.unique[, c(1, 4:6)]
   dff1 <- melt(dff, id.vars = 'group')
-  plt2 <- ggplot(dff1, aes(x = group, y = value, colour = variable)) + geom_point(data = dff1[variable == 'defrate']) + geom_line(data = dff1[variable == 'loesspd']) + scale_x_continuous(labels = function(x) paste0(floor(100 / numbins * x), '%')) + ggtitle('Transform in Percentile Space') + xlab('Percentile') + ylab('Default Rate (%)') + theme_minimal() + theme(legend.position = 'none') + scale_y_continuous(labels = scales::percent)
+  plt2 <- ggplot(dff1, aes(x = group, y = value, colour = variable)) + geom_point(data = dff1[variable == 'defrate']) + geom_line(data = dff1[variable == 'loesspd']) + scale_x_continuous(labels = function(x) paste0(floor(100 / numbins * x), '%')) + ggtitle('Transform in percentile space') + xlab('Percentile') + ylab('Default rate') + theme_minimal() + theme(legend.position = 'none') + scale_y_continuous(labels = scales::percent)
   dff1 <- melt(dff[, c('var', 'defrate', 'loesspd')], id.vars = 'var')
-  plt3 <- ggplot(dff1, aes(x = var, y = value, colour = variable)) + geom_point(data = dff1[variable == 'defrate']) + geom_line(data = dff1[variable == 'loesspd']) + ggtitle('Transform in Ratio Space - Median per Group') + xlab(label1) + ylab(NULL) + theme_minimal() + theme(legend.position = 'none') + scale_y_continuous(labels = scales::percent)
+  plt3 <- ggplot(dff1, aes(x = var, y = value, colour = variable)) + geom_point(data = dff1[variable == 'defrate']) + geom_line(data = dff1[variable == 'loesspd']) + ggtitle('Transform in ratio space - Median per group') + xlab(label1) + ylab(NULL) + theme_minimal() + theme(legend.position = 'none') + scale_y_continuous(labels = scales::percent)
   lay <- rbind(c(1, 1), c(2, 3))
   if(perconly) {
     return(plt2)
   } else {
     return(gridExtra::grid.arrange(plt1, plt2, plt3, nrow = 2, layout_matrix = lay))
   }
+}
+
+minimodel_plot_list <- function(dat, var, numbins = 50, span = 0.5, default_flag = 'dumdef1', label = NULL) {
+  if(is.null(label) || is.na(label)) {
+    label1 <- var
+  } else {
+    label1 <- label
+  }
+  dflt_col <- default_flag
+  dff <- minimodel(dat = dat, var = var, numbins = numbins, default_flag = dflt_col)
+  setDT(dff)
+  vrs <- dff[, median(var), group]
+  dff.unique <- dff[!duplicated(group)]
+  cls <- copy(colnames(dff.unique))
+  dff.unique[, var := NULL]
+  dff.unique <- merge(dff.unique, vrs, all.x = TRUE, by = 'group')
+  colnames(dff.unique)[ncol(dff.unique)] <- 'var'
+  dff.unique <- dff.unique[, cls, with = FALSE]
+  lspred <- loess(defrate ~ group, data = dff.unique, span = span)
+  dff[, loesspd := predict(lspred, newdata = dff)]
+  dff.unique[, loesspd := predict(lspred, newdata = dff.unique)]
+  ar_var <- AR(dff, 'loesspd', default_flag = dflt_col)
+  plt1 <- ggplot(dff, aes_string(x = 'var')) + geom_density() + ylab('Density') + xlab(label1) + ggtitle('Ratio distribution', paste0(label1, ', AR after transform = ', round(ar_var, 4))) + theme_minimal()
+  dff <- dff.unique[, c(1, 4:6)]
+  dff1 <- melt(dff, id.vars = 'group')
+  plt2 <- ggplot(dff1, aes(x = group, y = value, colour = variable)) + geom_point(data = dff1[variable == 'defrate']) + geom_line(data = dff1[variable == 'loesspd']) + scale_x_continuous(labels = function(x) paste0(floor(100 / numbins * x), '%')) + ggtitle('Transform in percentile space') + xlab('Percentile') + ylab('Default rate') + theme_minimal() + theme(legend.position = 'none') + scale_y_continuous(labels = scales::percent)
+  dff1 <- melt(dff[, c('var', 'defrate', 'loesspd')], id.vars = 'var')
+  plt3 <- ggplot(dff1, aes(x = var, y = value, colour = variable)) + geom_point(data = dff1[variable == 'defrate']) + geom_line(data = dff1[variable == 'loesspd']) + ggtitle('Transform in ratio space - Median per group') + xlab(label1) + ylab(NULL) + theme_minimal() + theme(legend.position = 'none') + scale_y_continuous(labels = scales::percent)
+  return(list(plt1, plt2, plt3))
 }
 
 compare_cap_plot <- function(dat, var1, var2, default_flag = 'dumdef1', lbl = NULL) {

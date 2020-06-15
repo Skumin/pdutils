@@ -346,7 +346,7 @@ compare_cap_plot <- function(dat, var1, var2, default_flag = 'dumdef1', lbl = NU
     stop("'var1' and 'var2' have to differ.")
   }
 
-  dft_col <- default_flag
+  dflt_col <- default_flag
 
   ars <- ar_compare(dat[!is.na(get(eval(var1))) & !is.na(get(eval(var2)))], var1, var2, default_flag = dflt_col)[, c(4:5, 7)]
 

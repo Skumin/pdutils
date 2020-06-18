@@ -116,6 +116,40 @@ AR_vec <- function(pds, default_flag) {
   return(mann_whitney_vec(pds = pds, default_flag = default_flag) * 2 - 1)
 }
 
+kolmogorov_smirnov <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = FALSE) {
+  stopifnot(is.data.table(dat))
+  dflt_col <- default_flag
+  tmp <- copy(dat[, c(pd_name, dflt_col), with = FALSE])
+
+  if(any(sort(unique(unlist(tmp[, 2]))) != c(0, 1))) {
+    stop("The default_flag column must contain 0s and 1s.")
+  }
+
+  if(sum(complete.cases(tmp)) != nrow(tmp)) {
+    if(!na.rm) {
+      stop('There are NAs in the two columns and na.rm is FALSE.')
+    } else {
+      tmp <- tmp[complete.cases(tmp)]
+    }
+  }
+
+  nondefs <- tmp[get(eval(dflt_col)) == 0, get(eval(pd_name))]
+  defs <- tmp[get(eval(dflt_col)) == 1, get(eval(pd_name))]
+  cdf_nondefs <- ecdf(nondefs)
+  cdf_defs <- ecdf(defs)
+
+  xs <- sort(union(defs, nondefs))
+
+  if(length(xs) <= 50) {
+    warning(paste0(pd_name, ' is either discrete or the dataset is too small. The location of the maximum difference may be imprecise.'))
+  }
+
+  x_max <- xs[which.max(cdf_nondefs(xs) - cdf_defs(xs))]
+  y_val <- c(cdf_nondefs(x_max), cdf_defs(x_max))
+
+  return(data.frame(x_pos = x_max, y_min = y_val[2], y_max = y_val[1], ks_stat = y_val[1] - y_val[2], p_val = ks.test(defs, nondefs)$p.val))
+}
+
 ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
   stopifnot(is.data.table(dat))
   .dflt_col <- default_flag

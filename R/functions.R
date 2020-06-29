@@ -75,8 +75,8 @@ mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = FALSE) 
 
   allobs <- nrow(tmp)
   defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
-  tmp[, rank := frank(get(eval(pd_name)), ties.method = 'average')]
-  output <- (as.numeric(tmp[get(eval(dflt_col)) == 1, sum(rank)]) - defaults * (defaults + 1) / 2) / defaults / (allobs - defaults)
+  tmp[, ranker := frank(get(eval(pd_name)), ties.method = 'average')]
+  output <- (as.numeric(tmp[get(eval(dflt_col)) == 1, sum(ranker)]) - defaults * (defaults + 1) / 2) / defaults / (allobs - defaults)
   return(output)
 }
 

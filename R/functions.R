@@ -75,7 +75,7 @@ mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = FALSE) 
 
   allobs <- nrow(tmp)
   defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
-  tmp[, ranker := frank(get(eval(pd_name)), ties.method = 'average')]
+  tmp[, ranker := data.table::frank(get(eval(pd_name)), ties.method = 'average')]
   output <- (as.numeric(tmp[get(eval(dflt_col)) == 1, sum(ranker)]) - defaults * (defaults + 1) / 2) / defaults / (allobs - defaults)
   return(output)
 }
@@ -86,7 +86,7 @@ mann_whitney_vec <- function(pds, default_flag, na.rm = FALSE) {
   }
 
   if(length(pds) != length(default_flag)) {
-    stop('pds and default_flag must have the same length')
+    stop('pds and default_flag must have the same length.')
   }
 
   if(sum(is.na(pds)) > 0 | sum(is.na(default_flag)) > 0) {
@@ -101,17 +101,57 @@ mann_whitney_vec <- function(pds, default_flag, na.rm = FALSE) {
 
   allobs <- length(pds)
   defaults <- sum(default_flag)
-  ranker <- frank(pds, ties.method = 'average')
+  ranker <- data.table::frank(pds, ties.method = 'average')
   output <- (sum(ranker[default_flag == 1]) - defaults * (defaults + 1) / 2) / defaults / (allobs - defaults)
   return(output)
 }
 
-# AR defined here using Mann Whitney because it handles ties properly; if the number is large the original method overestimates AR
+mann_whitney_multiclass <- function(dat, pred, resp, na.rm = FALSE) {
+  stopifnot(is.data.table(dat))
+
+  if(any(unlist(lapply(dat[, c(pred, resp), with = FALSE], class)) != 'factor')) {
+    stop('The pred and resp columns must be factors.')
+  }
+
+  resp_col <- resp
+  tmp <- copy(dat[, c(pred, resp_col), with = FALSE])
+
+  if(sum(complete.cases(tmp)) != nrow(tmp)) {
+    if(!na.rm) {
+      stop('There are NAs in the two columns and na.rm is FALSE.')
+    } else {
+      tmp <- tmp[complete.cases(tmp)]
+    }
+  }
+
+  actl_g <- levels(tmp[, get(eval(resp_col))])
+  num_g <- data.table(lab = actl_g, lab_id = seq_along(actl_g))
+
+  tmp <- merge(tmp, setNames(num_g, c(resp_col, 'actual_id')), by = resp_col, all.x = TRUE)
+  tmp <- merge(tmp, setNames(num_g, c(pred, 'pred_id')), by = pred, all.x = TRUE)
+
+  actuals <- tmp[, actual_id]
+  predicted <- tmp[, pred_id]
+
+  mat <- matrix(0, nrow = length(actl_g), ncol = length(actl_g))
+
+  for(i in seq_along(actl_g)) {
+    for(j in seq_along(actl_g)) {
+      if(j >= i) {
+        next
+      } else {
+        mat[i, j] <- mann_whitney_vec(predicted[actuals == i | actuals == j], as.integer(actuals[actuals == i | actuals == j] == i))
+      }
+    }
+  }
+
+  return(mean(mat[lower.tri(mat)]))
+}
+
 AR <- function(dff, pd_name, default_flag = "dumdef1") {
   return(mann_whitney(dat = dff, pd_name = pd_name, default_flag = default_flag) * 2 - 1)
 }
 
-# Faster AR that takes vectors directly
 AR_vec <- function(pds, default_flag) {
   return(mann_whitney_vec(pds = pds, default_flag = default_flag) * 2 - 1)
 }

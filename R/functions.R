@@ -609,6 +609,40 @@ psi <- function(x1, x2) {
   return(as.data.frame(tst))
 }
 
+triangle_plot <- function(dat, var1, var2, pd1, pd2, default_flag = 'dumdef1') {
+  stopifnot(is.data.table(dat))
+
+  dflt_col <- default_flag
+
+  tmp <- copy(dat[, c(var1, var2, pd1, pd2, dflt_col), with = FALSE])
+  tmp <- tmp[complete.cases(tmp)]
+
+  var1_bin <- 'var1_bin'
+  var2_bin <- 'var2_bin'
+
+  tmp[, eval(var1_bin) := .bincode(get(eval(var1)), breaks = quantile(get(eval(var1)), probs = c(0, 0.25, 0.5, 0.75, 1)), right = TRUE, include.lowest = TRUE)]
+  tmp[, eval(var2_bin) := .bincode(get(eval(var2)), breaks = quantile(get(eval(var2)), probs = c(0, 0.25, 0.5, 0.75, 1)), right = TRUE, include.lowest = TRUE)]
+
+  sumstat <- tmp[, .(actDR = mean(get(eval(dflt_col))), pd2DR = mean(get(eval(pd2))), pd1DR = mean(get(eval(pd1)))), keyby = .(var1_bin, var2_bin)]
+  sumstat <- melt(sumstat, measure.vars = 3:5)
+  sumstat[, variable := factor(variable, levels = c('actDR', 'pd2DR', 'pd1DR'))]
+  setorder(sumstat, var1_bin, var2_bin, variable)
+  sumstat[, id := paste(var1_bin, var2_bin, variable, sep = '_')]
+  sumstat <- sumstat[, 4:5]
+
+  positions <- data.table(id = rep(sumstat$id, each = 3), x = c(rep(c(0, 0, 1, 0, 0.5, 1, 0.5, 1, 1), 4), rep(c(0, 0, 1, 0, 0.5, 1, 0.5, 1, 1) + 1, 4), rep(c(0, 0, 1, 0, 0.5, 1, 0.5, 1, 1) + 2, 4), rep(c(0, 0, 1, 0, 0.5, 1, 0.5, 1, 1) + 3, 4)), y = c(c(0, 1, 1, 0, 0.5, 0, 0.5, 0, 1), c(0, 1, 1, 0, 0.5, 0, 0.5, 0, 1) + 1, c(0, 1, 1, 0, 0.5, 0, 0.5, 0, 1) + 2, c(0, 1, 1, 0, 0.5, 0, 0.5, 0, 1) + 3, c(0, 1, 1, 0, 0.5, 0, 0.5, 0, 1), c(0, 1, 1, 0, 0.5, 0, 0.5, 0, 1) + 1, c(0, 1, 1, 0, 0.5, 0, 0.5, 0, 1) + 2, c(0, 1, 1, 0, 0.5, 0, 0.5, 0, 1) + 3))
+
+  datapoly <- merge(sumstat, positions, by = 'id')
+  colnames(datapoly)[2] <- 'PD'
+  datapoly[, x := x/4]
+  datapoly[, y := y/4]
+  datapoly[, PD := PD * 100]
+  datapoly[, x_c := sum(x)/3, by = id]
+  datapoly[, y_c := sum(y)/3, by = id]
+
+  return(ggplot(datapoly) + geom_polygon(aes(x = x, y = y, fill = PD, group = id)) + geom_text(aes(x = x_c, y = y_c, label = round(PD, 2))) + scale_y_continuous(labels = scales::percent) + scale_x_continuous(labels = scales::percent) + theme(legend.position = "none") + xlab(paste0('Percentiles of ', var1)) + ylab(paste0('Percentiles of ', var2)) + ggtitle('Actual Default Rate and Predicted PDs', paste0('Top left: actual, right-hand side: ', pd1, ', bottom: ', pd2)) + scale_fill_gradient(low = '#0099f7', high = '#f11712'))
+}
+
 crossover_deleq <- function(mat, newmat, cr) {
   return((1 - cr) * mat + cr * newmat)
 }

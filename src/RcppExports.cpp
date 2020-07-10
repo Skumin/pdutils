@@ -2,6 +2,7 @@
 // Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #include <RcppArmadillo.h>
+#include <RcppEigen.h>
 #include <Rcpp.h>
 
 using namespace Rcpp;
@@ -61,12 +62,30 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// pt_multi_pd
+double pt_multi_pd(int nums, int defs, double rho, double tau, int pers, double ci, int simulations);
+RcppExport SEXP _pdutils_pt_multi_pd(SEXP numsSEXP, SEXP defsSEXP, SEXP rhoSEXP, SEXP tauSEXP, SEXP persSEXP, SEXP ciSEXP, SEXP simulationsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type nums(numsSEXP);
+    Rcpp::traits::input_parameter< int >::type defs(defsSEXP);
+    Rcpp::traits::input_parameter< double >::type rho(rhoSEXP);
+    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
+    Rcpp::traits::input_parameter< int >::type pers(persSEXP);
+    Rcpp::traits::input_parameter< double >::type ci(ciSEXP);
+    Rcpp::traits::input_parameter< int >::type simulations(simulationsSEXP);
+    rcpp_result_gen = Rcpp::wrap(pt_multi_pd(nums, defs, rho, tau, pers, ci, simulations));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_pdutils_mutate_deleq", (DL_FUNC) &_pdutils_mutate_deleq, 3},
     {"_pdutils_project_population", (DL_FUNC) &_pdutils_project_population, 3},
     {"_pdutils_gen_init_pop", (DL_FUNC) &_pdutils_gen_init_pop, 4},
     {"_pdutils_gen_init_pop_x0", (DL_FUNC) &_pdutils_gen_init_pop_x0, 5},
+    {"_pdutils_pt_multi_pd", (DL_FUNC) &_pdutils_pt_multi_pd, 7},
     {NULL, NULL, 0}
 };
 

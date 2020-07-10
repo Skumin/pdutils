@@ -13,7 +13,7 @@ apd <- function(cpds, tenors = NULL) {
   } else {
     tnrs <- tenors
   }
-  return(1 - (1 - cpds)^(1/tnrs))
+  return(1 - (1 - cpds) ^ (1 / tnrs))
 }
 
 cpd <- function(apds, tenors = NULL) {
@@ -25,7 +25,7 @@ cpd <- function(apds, tenors = NULL) {
   } else {
     tnrs <- tenors
   }
-  cpds <- 1 - (1 - apds)^tnrs
+  cpds <- 1 - (1 - apds) ^ tnrs
   if(any(diff(cpds) <= 0)) {
     stop('The annualized default probabilities result in non-increasing cumulative defaut probabilities.')
   } else {
@@ -42,6 +42,66 @@ fpd <- function(cpds) {
   }
   fpds <- c(cpds[1], sapply(seq_along(cpds)[-length(cpds)], function(x) 1 - (1 - cpds[x + 1])/(1 - cpds[x])))
   return(fpds)
+}
+
+bcr <- function(nobs, ndefs, rho, tau, periods, ci = 0.7, simulations = 1000) {
+  if(!class(nobs) %in% c('numeric', 'integer')) {
+    stop('All arguments must be numeric.')
+  }
+
+  if(!class(ndefs) %in% c('numeric', 'integer')) {
+    stop('All arguments must be numeric.')
+  }
+
+  if(!class(rho) %in% c('numeric', 'integer')) {
+    stop('All arguments must be numeric.')
+  }
+
+  if(!class(tau) %in% c('numeric', 'integer')) {
+    stop('All arguments must be numeric.')
+  }
+
+  if(!class(periods) %in% c('numeric', 'integer')) {
+    stop('All arguments must be numeric.')
+  }
+
+  if(!class(ci) %in% c('numeric', 'integer')) {
+    stop('All arguments must be numeric.')
+  }
+
+  if(!class(simulations) %in% c('numeric', 'integer')) {
+    stop('All arguments must be numeric.')
+  }
+
+  if(any(c(length(nobs), length(ndefs), length(rho), length(tau), length(periods), length(ci), length(simulations)) != 1)) {
+    stop('All arguments must be of length 1.')
+  }
+
+  if(ndefs > nobs) {
+    stop('nobs must be greater than ndefs.')
+  }
+
+  if(ndefs <= 0 | nobs <= 0) {
+    stop('nobs and ndefs must be greater than 0.')
+  }
+
+  if(nobs %% 1 != 0 | ndefs %% 1 != 0) {
+    stop('The number of defaults and the numbers of observations must be integers.')
+  }
+
+  if(periods %% 1 != 0 | simulations %% 1 != 0) {
+    stop('The number of periods and the numbers of simulations must be integers.')
+  }
+
+  if(class(rho) != 'numeric' | class(tau) != 'numeric' | class(ci) != 'numeric') {
+    stop('rho, tau, and ci must be floats.')
+  }
+
+  if(!data.table::between(rho, 0., 1., incbounds = TRUE) | !data.table::between(tau, 0., 1., incbounds = TRUE) | !data.table::between(ci, 0., 1., incbounds = TRUE)) {
+    stop('rho, tau, and ci must be between 0 and 1.')
+  }
+
+  return(pt_multi_pd(nobs, ndefs, rho, tau, periods, ci, simulations))
 }
 
 binomial_test <- function(n, p, a) {
@@ -314,7 +374,7 @@ trans_var_vec <- function(var, default_flag, numbins = 50, span = 0.75, na.rm = 
   }
 
   if(length(var) != length(default_flag)) {
-    stop('pds and default_flag must have the same length')
+    stop('pds and default_flag must have the same length.')
   }
 
   tbl <- data.table(varx = var, dflt = default_flag)
@@ -529,10 +589,10 @@ weighted_mean_ci <- function(x, weights, conf_level = 0.95, na.rm = FALSE) {
   y <- x[!is.na(x)]
   nx <- length(y)
   vx <- Hmisc::wtd.var(y, wts, normwt = TRUE)
-  tstat <- weighted.mean(y, wts)/sqrt(vx/nx)
+  tstat <- weighted.mean(y, wts) / sqrt(vx / nx)
   cint <- qt(1 - (1 - conf_level)/2, nx - 1)
-  cint <- tstat + c(-cint, cint)
-  return(c(cint[1] * sqrt(vx/nx), weighted.mean(y, wts), cint[2] * sqrt(vx/nx)))
+  cint <- tstat + c(- cint, cint)
+  return(c(cint[1] * sqrt(vx / nx), weighted.mean(y, wts), cint[2] * sqrt(vx / nx)))
 }
 
 woe <- function(dff, var, default_flag = 'dumdef1') {
@@ -659,7 +719,7 @@ deleq <- function(fun, ..., NP, boxbounds, Emat, constr, x0 = NULL, cr = 0.7, f.
     stop("'Emat' must be a matrix.")
   }
   if(ncol(Emat) != nrow(boxbounds)) {
-    stop("The number of rows of 'boxbounds' must be the same as the number of columns of 'EMat'.")
+    stop("The number of rows of 'boxbounds' must be the same as the number of columns of 'Emat'.")
   }
   if(!is.matrix(constr)) {
     stop("'constr' must be a matrix.")

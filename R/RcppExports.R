@@ -21,3 +21,7 @@ pt_multi_pd <- function(nums, defs, rho, tau, pers, ci, simulations) {
     .Call('_pdutils_pt_multi_pd', PACKAGE = 'pdutils', nums, defs, rho, tau, pers, ci, simulations)
 }
 
+pt_multi_pd_full <- function(nums, defs, rho, tau, pers, ci, simulations) {
+    .Call('_pdutils_pt_multi_pd_full', PACKAGE = 'pdutils', nums, defs, rho, tau, pers, ci, simulations)
+}
+

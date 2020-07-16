@@ -150,3 +150,70 @@ double pt_multi_pd(int nums, int defs, double rho, double tau, int pers, double 
 
   return x;
 }
+
+// [[Rcpp::export]]
+Eigen::VectorXd pt_multi_pd_full(Eigen::VectorXd nums, Eigen::VectorXd defs, double rho, double tau, int pers, double ci, int simulations)
+{
+  Eigen::MatrixXd corM(pers, pers);
+
+  for (int j = 0; j < pers; j++)
+  {
+    for (int i = 0; i < pers; i++)
+    {
+      corM(i, j) = pow(tau, abs(i - j));
+    }
+  }
+
+  Eigen::MatrixXd rSt = mv_normal(corM, simulations);
+
+  Eigen::VectorXd nums_all(nums.size());
+  Eigen::VectorXd defs_all(nums.size());
+  Eigen::VectorXd roots(nums.size());
+
+  nums_all(0) = nums(0);
+  defs_all(0) = defs(0);
+
+  for (int i = 1; i < nums.size(); i++)
+  {
+    nums_all(i) = nums_all(i - 1) + nums(i);
+    defs_all(i) = defs_all(i - 1) + defs(i);
+  }
+
+  Eigen::VectorXd nums_all_rev = nums_all.reverse();
+  Eigen::VectorXd defs_all_rev = defs_all.reverse();
+
+  double x0, x1;
+  double x, f, f0;
+  double e = 0.00001;
+
+  int nms, def;
+
+  for (int i = 0; i < nums.size(); i++)
+  {
+    nms = nums_all_rev(i);
+    def = defs_all_rev(i);
+
+    x0 = 0.0000001;
+    x1 = 0.9999999;
+    f0 = -1. * pt_prob_less_k(nms, def, x0, rho, rSt) - ci + 1.;
+
+    do
+    {
+      x = (x0 + x1) / 2.;
+      f = -1. * pt_prob_less_k(nms, def, x, rho, rSt) - ci + 1.;
+
+      if(f0 * f < 0.)
+      {
+        x1 = x;
+      }
+      else
+      {
+        x0 = x;
+      }
+    } while (fabs(f) > e);
+
+    roots(i) = x;
+  }
+
+  return roots.reverse();
+}

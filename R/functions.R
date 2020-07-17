@@ -186,10 +186,12 @@ pluto_tasche <- function(nobs, ndefs, rho, tau, periods, ci = 0.7, simulations =
     stop('ci must be greater than 0 and less than or equal to 1.')
   }
 
+  # A basic check to see if the default rate is decreasing on average. In future better checks may be needed
   if(mean(diff(ndefs/nobs)) > 0) {
-    warning('The default rate is, on average, increasing, when moving through grades. Make sure nobs and ndefs are sorted from the worst to the best grade.')
+    warning('The default rate is, on average, increasing, when moving through grades. Make sure nobs and ndefs are sorted from the worst (i.e., highest risk) to the best grade.')
   }
 
+  # Run the C++ function here, after all checks have been performed
   return(pt_multi_pd_full(nobs, ndefs, rho, tau, periods, ci, simulations))
 }
 
@@ -423,25 +425,6 @@ yearmon <- function(dates) {
   yrs <- data.table::year(dates)
   return(as.integer(data.table::fifelse(mnths <= 9, stringi::stri_c(yrs, '0', mnths), stringi::stri_c(yrs, mnths))))
 }
-
-# AR <- function(dff, pd_name, default_flag = "dumdef1") {
-#   stopifnot(is.data.table(dff))
-#   temp <- copy(dff[, c(pd_name, default_flag), with = FALSE])
-#   ids <- complete.cases(temp[, c(pd_name, default_flag), with = FALSE])
-#   temp <- temp[ids]
-#   temp <- as.matrix(temp)
-#   temp <- temp[order(temp[, 1], temp[, 2], decreasing = TRUE), ]
-#   arv <- (pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(temp[, 2])/sum(temp[, 2])))- .5)/(pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(sort(temp[, 2], decreasing = TRUE))/sum(temp[, 2]))) - .5)
-#   return(arv)
-# }
-
-# AR_vec <- function(pd, default) {
-#   temp <- matrix(c(pd, default), ncol = 2, byrow = FALSE)
-#   temp <- temp[complete.cases(temp), ]
-#   temp <- temp[order(temp[, 1], temp[, 2], decreasing = TRUE), ]
-#   arv <- (pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(temp[, 2])/sum(temp[, 2])))- .5)/(pracma::trapz(seq(0, 1, length = nrow(temp) + 1), c(0, cumsum(sort(temp[, 2], decreasing = TRUE))/sum(temp[, 2]))) - .5)
-#   return(arv)
-# }
 
 minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
   dflt_col <- default_flag

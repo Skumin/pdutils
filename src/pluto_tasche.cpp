@@ -91,9 +91,9 @@ Eigen::MatrixXd mv_normal(Eigen::MatrixXd corM, int simulations)
   Eigen::LLT<Eigen::MatrixXd> cholSolver(corM);
 
   // We can only use the cholesky decomposition if
-  // the covariance matrix is symmetric, pos-definite.
-  // But a covariance matrix might be pos-semi-definite.
-  // In that case, we'll go to an EigenSolver
+  // the covariance matrix is symmetric, positive definite.
+  // But a covariance matrix might be positive semi-definite.
+  // In that case, we'll go to an EigenSolver.
   if (cholSolver.info() == Eigen::Success)
   {
     // Use cholesky solver
@@ -168,7 +168,6 @@ Eigen::VectorXd pt_multi_pd_full(Eigen::VectorXd nums, Eigen::VectorXd defs, dou
 
   Eigen::VectorXd nums_all(nums.size());
   Eigen::VectorXd defs_all(nums.size());
-  Eigen::VectorXd roots(nums.size());
 
   nums_all(0) = nums(0);
   defs_all(0) = defs(0);
@@ -184,9 +183,11 @@ Eigen::VectorXd pt_multi_pd_full(Eigen::VectorXd nums, Eigen::VectorXd defs, dou
 
   double x0, x1;
   double x, f, f0;
-  double e = 0.00001;
+  double e = 0.0001;
 
   int nms, def;
+
+  Eigen::VectorXd roots(nums.size());
 
   for (int i = 0; i < nums.size(); i++)
   {

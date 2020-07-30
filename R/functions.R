@@ -403,10 +403,18 @@ ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
   return(output)
 }
 
-ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf_level = 0.95) {
+ar_ci <- function(dat, pd_name, default_flag = 'dumdef1', conf_level = 0.95, na.rm = FALSE) {
   stopifnot(is.data.table(dat))
   .dflt_col <- default_flag
   tmp <- copy(dat[, c(pd_name, .dflt_col), with = FALSE])
+
+  if(sum(complete.cases(tmp)) != nrow(tmp)) {
+    if(!na.rm) {
+      stop('There are NAs in the two columns and na.rm is FALSE.')
+    } else {
+      tmp <- tmp[complete.cases(tmp)]
+    }
+  }
 
   if(length(unique(tmp[, get(eval(.dflt_col))])) == 1) {
     return(as.numeric(c(NA, NA)))

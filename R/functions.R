@@ -112,6 +112,10 @@ bcr <- function(nobs, ndefs, rho, tau, periods, ci = 0.7, simulations = 1000) {
   return(pt_multi_pd(nobs, ndefs, rho, tau, periods, ci, simulations))
 }
 
+gcorr_pd <- function(uncond_pd, exp_val, rsq, rho) {
+  return(pnorm((qnorm(uncond_pd) - sqrt(rsq) * exp_val)/(sqrt(1 - rsq * rho^2))))
+}
+
 pluto_tasche <- function(nobs, ndefs, rho, tau, periods, ci = 0.7, simulations = 1000) {
   # From the highest risk to the lowest risk
   if(length(nobs) != length(ndefs)) {
@@ -299,12 +303,12 @@ mann_whitney_multiclass <- function(dat, pred, resp, na.rm = FALSE) {
   return(mean(mat[lower.tri(mat)]))
 }
 
-AR <- function(dff, pd_name, default_flag = "dumdef1") {
-  return(mann_whitney(dat = dff, pd_name = pd_name, default_flag = default_flag) * 2 - 1)
+AR <- function(dff, pd_name, default_flag = "dumdef1", na.rm = FALSE) {
+  return(mann_whitney(dat = dff, pd_name = pd_name, default_flag = default_flag, na.rm = na.rm) * 2 - 1)
 }
 
-AR_vec <- function(pds, default_flag) {
-  return(mann_whitney_vec(pds = pds, default_flag = default_flag) * 2 - 1)
+AR_vec <- function(pds, default_flag, na.rm = FALSE) {
+  return(mann_whitney_vec(pds = pds, default_flag = default_flag, na.rm = na.rm) * 2 - 1)
 }
 
 kolmogorov_smirnov <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = FALSE) {

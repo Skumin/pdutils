@@ -199,12 +199,31 @@ pluto_tasche <- function(nobs, ndefs, rho, tau, periods, ci = 0.7, simulations =
   return(pt_multi_pd_full(nobs, ndefs, rho, tau, periods, ci, simulations))
 }
 
-binomial_test <- function(n, p, a) {
+binomial_test_old <- function(n, p, a) {
   return(head(which(pbinom(c(0, seq_len(n)), n, p) >= a) - 1, 1))
 }
 
-binomial_test_full <- function(n, p, a, defs) {
-  return(data.table::between(defs, binomial_test(n, p, a), binomial_test(n, p, 1 - a)))
+binomial_test <- function(nobs, ndefs, conf_level = 0.95) {
+  if(length(nobs) != length(ndefs)) {
+    stop('Lengths of nobs and ndefs must be equal.')
+  }
+  if(any(ndefs > nobs)) {
+    stop('The number of defaults must be less than or equal to the number of observations.')
+  }
+  if(any((c(nobs, ndefs) %% 1) != 0)) {
+    stop('Nobs and ndefs must be integers.')
+  }
+  if(any(c(nobs, ndefs) < 0)) {
+    stop('Nobs and ndefs must be non-negative.')
+  }
+  if(conf_level >= 0 | conf_level <= 1) {
+    stop('conf_level must be greater than 0 and less than 1.')
+  }
+
+  alph <- (1 - conf_level) / 2
+  lb <- sapply(seq_along(nobs), function(x) qbeta(alph, ndefs[x], nobs[x] - ndefs[x] + 1))
+  ub <- sapply(seq_along(nobs), function(x) qbeta(1 - alph, ndefs[x] + 1, nobs[x] - ndefs[x]))
+  return(list(lb, ub))
 }
 
 bucket <- function(x, bins, na.rm = FALSE) {

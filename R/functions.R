@@ -216,7 +216,7 @@ binomial_test <- function(nobs, ndefs, conf_level = 0.95) {
   if(any(c(nobs, ndefs) < 0)) {
     stop('Nobs and ndefs must be non-negative.')
   }
-  if(conf_level >= 0 | conf_level <= 1) {
+  if(conf_level <= 0 | conf_level >= 1) {
     stop('conf_level must be greater than 0 and less than 1.')
   }
 

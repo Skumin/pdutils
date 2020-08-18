@@ -471,6 +471,22 @@ minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
   return(dff)
 }
 
+get_minimodeled_value <- function(var, default_flag, numbins = 50, span = 0.75) {
+  ids <- !is.na(var) & !is.na(default_flag)
+  dff <- data.table(x = var, dflt = default_flag)
+  dff[, id := .I]
+  dff <- dff[ids]
+  setorder(dff, x)
+  dff[, group := bucket(seq_len(.N), bins = numbins)]
+  dff[, defrate := mean(dflt), by = group]
+  dff.unique <- dff[!duplicated(dff[, group]), .(group, defrate)]
+  lspred <- loess(defrate ~ group, data = dff.unique, span = span)
+  dff[, loesspd := predict(lspred, newdata = dff)]
+  out <- rep(NA, length(var))
+  out[dff[, id]] <- dff[, loesspd]
+  return(out)
+}
+
 trans_var_vec <- function(var, default_flag, numbins = 50, span = 0.75, na.rm = FALSE) {
   if(any(!sort(unique(default_flag)) %in% c(0, 1))) {
     stop("The default_flag column must only contains 0s and 1s.")

@@ -577,7 +577,7 @@ minimodel_plot_list <- function(dat, var, numbins = 50, span = 0.5, default_flag
   return(list(plt1, plt2, plt3))
 }
 
-compare_cap_plot <- function(dat, var1, var2, default_flag = 'dumdef1', lbl = NULL) {
+compare_cap_plot_2 <- function(dat, var1, var2, default_flag = 'dumdef1', lbl = NULL) {
   stopifnot(is.data.table(dat))
   if(var1 == var2) {
     stop("'var1' and 'var2' have to differ.")
@@ -612,6 +612,37 @@ compare_cap_plot <- function(dat, var1, var2, default_flag = 'dumdef1', lbl = NU
     ggplot(tmp, aes(x = PercSample, y = value, colour = Model, group = Model)) + geom_line() + xlab('Percentage of Sample Excluded') + ylab('Percentage of Defaulters Excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle('CAP Plots', paste0('AR 1 = ', round(ars[, 1], 3), ', AR 2 = ', round(ars[, 2], 3), '; p-value = ', round(ars[, 3], 4))) + theme_minimal()
   } else {
     ggplot(tmp, aes(x = PercSample, y = value, colour = Model, group = Model)) + geom_line() + xlab('Percentage of Sample Excluded') + ylab('Percentage of Defaulters Excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle(lbl, paste0('AR 1 = ', round(ars[, 1], 3), ', AR 2 = ', round(ars[, 2], 3), '; p-value = ', round(ars[, 3], 4))) + theme_minimal()
+  }
+}
+
+compare_cap_plot_n <- function(dat, vars, default_flag = 'dumdef1', lbl = NULL) {
+  stopifnot(is.data.table(dat))
+  dflt_col <- default_flag
+  ids <- complete.cases(dat[, vars, with = FALSE])
+
+  ars <- paste0(paste0(vars, ': ', round(unlist(dat[, lapply(vars, function(x) pdutils::AR_vec(get(eval(x)), get(eval(dflt_col))))]), 3)), collapse = ', ')
+
+  lst <- list()
+  for(i in seq_along(vars)) {
+    lst[[i]] <- copy(dat[ids, c(vars[i], dflt_col), with = FALSE])
+    setorderv(lst[[i]], vars[i], order = -1)
+    lst[[i]][, perc_sample := .I/.N]
+    lst[[i]][, perc_default := cumsum(get(eval(dflt_col)))/sum(get(eval(dflt_col)))]
+  }
+
+  .tmp <- lst[[1]][, .(perc_sample, `Model 1` = perc_default)]
+  colnames(.tmp)[2] <- vars[1]
+  tmp1 <- Reduce(cbind, lapply(lst[-1], function(z) z[, 'perc_default']))
+  colnames(tmp1) <- vars[-1]
+  .tmp <- cbind(.tmp, tmp1)
+
+  .tmp <- melt(.tmp, id.vars = 1, variable.name = 'Model')
+  .tmp[, Model := factor(Model, levels = vars)]
+
+  if(is.null(lbl)) {
+    ggplot(.tmp, aes(x = perc_sample, y = value, colour = Model, group = Model)) + geom_line() + xlab('Percentage of sample excluded') + ylab('Percentage of defaulters excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle('CAP plots', paste0('ARs: ', ars)) + theme_minimal()
+  } else {
+    ggplot(.tmp, aes(x = perc_sample, y = value, colour = Model, group = Model)) + geom_line() + xlab('Percentage of sample excluded') + ylab('Percentage of defaulters excluded') + scale_x_continuous(labels = scales::percent) + scale_y_continuous(labels = scales::percent) + ggtitle(lbl, paste0('ARs: ', ars)) + theme_minimal()
   }
 }
 

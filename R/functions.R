@@ -457,6 +457,20 @@ yearmon <- function(dates) {
   return(as.integer(data.table::fifelse(mnths <= 9, stringi::stri_c(yrs, '0', mnths), stringi::stri_c(yrs, mnths))))
 }
 
+end_of_month <- function(dates) {
+  if(class(dates) != 'Date') {
+    stop('dates must be of class "Date".')
+  }
+  return(lubridate::ceiling_date(dates, 'months') - 1)
+}
+
+start_of_month <- function(dates) {
+  if(class(dates) != 'Date') {
+    stop('dates must be of class "Date".')
+  }
+  return(lubridate::floor_date(dates, 'months'))
+}
+
 minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
   dflt_col <- default_flag
   dff <- copy(dat[, c(var, dflt_col), with = FALSE])
@@ -471,6 +485,7 @@ minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {
   return(dff)
 }
 
+# Potentially not necessary given the two functions below
 get_minimodeled_value <- function(var, default_flag, numbins = 50, span = 0.75) {
   ids <- !is.na(var) & !is.na(default_flag)
   dff <- data.table(x = var, dflt = default_flag)
@@ -636,7 +651,7 @@ compare_cap_plot_n <- function(dat, vars, default_flag = 'dumdef1', lbl = NULL) 
   dflt_col <- default_flag
   ids <- complete.cases(dat[, vars, with = FALSE])
 
-  ars <- paste0(paste0(vars, ': ', round(unlist(dat[, lapply(vars, function(x) pdutils::AR_vec(get(eval(x)), get(eval(dflt_col))))]), 3)), collapse = ', ')
+  ars <- paste0(paste0(vars, ': ', round(unlist(dat[, lapply(vars, function(x) pdutils::AR_vec(get(eval(x)), get(eval(dflt_col)), na.rm = TRUE))]), 3)), collapse = ', ')
 
   lst <- list()
   for(i in seq_along(vars)) {

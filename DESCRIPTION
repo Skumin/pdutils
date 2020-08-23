@@ -20,7 +20,8 @@ Imports:
     Rcpp,
     pROC,
     Hmisc,
-    stringi
+    stringi,
+    lubridate
 LinkingTo:
     Rcpp,
     RcppArmadillo,

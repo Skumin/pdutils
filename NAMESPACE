@@ -51,5 +51,6 @@ importFrom("stats", "complete.cases", "loess", "median", "pbinom", "pchisq", "pn
 importFrom("utils", "head")
 importFrom("Hmisc", 'wtd.var')
 importFrom('stringi', 'stri_c')
+importFrom('lubridate', 'ceiling_date', 'floor_date')
 useDynLib(pdutils)
 importFrom("Rcpp", sourceCpp)

@@ -254,6 +254,11 @@ mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = FALSE) 
   return(output)
 }
 
+get_column_type <- function(dt, col_type) {
+  cls <- unlist(lapply(dt, class))
+  return(names(cls[cls == col_type]))
+}
+
 mann_whitney_vec <- function(pds, default_flag, na.rm = FALSE) {
   if(any(!sort(unique(default_flag)) %in% c(0, 1))) {
     stop("The default_flag column must only contains 0s and 1s.")

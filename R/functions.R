@@ -254,6 +254,44 @@ mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = FALSE) 
   return(output)
 }
 
+create_default_flag <- function(dff, id, date_col, default_status, default_flag_name = 'default_flag', horizon = 1) {
+  stopifnot(is.data.table(dff))
+
+  tmp <- copy(dff[, c(id, date_col, default_status), with = FALSE])
+  tmp[, num_col := .I]
+  setorderv(tmp, cols = c(date_col, id))
+
+  defs <- data.table::CJ(Date = sort(unique(tmp[, get(eval(date_col))])), identifier = sort(unique(tmp[, get(eval(id))])))
+  defs <- merge(tmp[, c(date_col, id, default_status), with = FALSE], defs, by.x = c(date_col, id), by.y = c('Date', 'identifier'), all = TRUE)
+  colnames(defs) <- c('Date', 'identifier', 'dflt')
+  setorder(defs, Date, identifier)
+  defs <- defs[identifier %in% defs[dflt == 1, identifier]]
+  defs <- defs[!is.na(dflt)]
+  defs <- split(defs, by = 'identifier')
+
+  for(i in seq_along(defs)) {
+    defs[[i]][, eval(default_flag_name) := integer(nrow(defs[[i]]))]
+    for(j in seq_len(nrow(defs[[i]]))) {
+      date_row <- defs[[i]][j, Date]
+      if(any(defs[[i]][(Date >= date_row) & (Date < (date_row + 370 * horizon)), dflt] == 1)) {
+        defs[[i]][j, eval(default_flag_name) := 1]
+      }
+    }
+  }
+
+  defs <- rbindlist(defs)
+  tmp <- merge(tmp, defs[, c('Date', 'identifier', default_flag_name), with = FALSE], by.x = c(date_col, id), by.y = c('Date', 'identifier'), all.x = TRUE)
+  rm(defs)
+
+  tmp[, defaulted := NULL]
+  tmp[is.na(get(eval(default_flag_name))), eval(default_flag_name) := 0]
+  tmp <- merge(dff, tmp, by = c(id, date_col))
+  setorder(tmp, num_col)
+  tmp[, num_col := NULL]
+
+  return(as.data.frame(tmp))
+}
+
 get_column_type <- function(dt, col_type) {
   cls <- unlist(lapply(dt, class))
   return(names(cls[cls == col_type]))

@@ -199,10 +199,6 @@ pluto_tasche <- function(nobs, ndefs, rho, tau, periods, ci = 0.7, simulations =
   return(pt_multi_pd_full(nobs, ndefs, rho, tau, periods, ci, simulations))
 }
 
-binomial_test_old <- function(n, p, a) {
-  return(head(which(pbinom(c(0, seq_len(n)), n, p) >= a) - 1, 1))
-}
-
 binomial_test <- function(nobs, ndefs, conf_level = 0.95) {
   if(length(nobs) != length(ndefs)) {
     stop('Lengths of nobs and ndefs must be equal.')
@@ -512,6 +508,15 @@ start_of_month <- function(dates) {
     stop('dates must be of class "Date".')
   }
   return(lubridate::floor_date(dates, 'months'))
+}
+
+end_of_quarter <- function(dates) {
+  if(class(dates) != 'Date') {
+    stop('dates must be of class "Date".')
+  }
+  yr <- data.table::year(dates)
+  qrt <- data.table::quarter(dates)
+  return(end_of_month(anytime::anydate(paste0(yr, '-', data.table::fcase(qrt == 1, '03', qrt == 2, '06', qrt == 3, '09', default = '12'), '-01'))))
 }
 
 minimodel <- function(dat, var, numbins = 50, default_flag = 'dumdef1') {

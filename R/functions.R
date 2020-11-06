@@ -226,6 +226,29 @@ bucket <- function(x, bins, na.rm = FALSE) {
   return(.bincode(x, quantile(x, probs = 0:bins/bins, na.rm = na.rm), right = TRUE, include.lowest = TRUE))
 }
 
+avPlots_invis <- function(mdl, ...) {
+  ff <- tempfile()
+  png(filename = ff)
+  out <- car::avPlots(mdl, ...)
+  dev.off()
+  unlink(ff)
+  return(out)
+}
+
+added_variable_plots <- function(mdl, point_colour = NA, smooth_colour = NA) {
+  stopifnot(class(mdl) == 'lm')
+
+  mdls <- avPlots_invis(mdl)
+  mdls <- lapply(mdls, as.data.table)
+  for(i in seq_along(mdls)) {
+    mdls[[i]][, Variable := names(mdls)[i]]
+    colnames(mdls[[i]])[1] <- 'value'
+  }
+  mdls <- rbindlist(mdls)
+  mdls[, Variable := factor(Variable, unique(Variable))]
+  ggplot(mdls, aes_string('value', colnames(mdls)[2])) + geom_point(colour = ifelse(!is.na(point_colour), point_colour, 'black')) + facet_wrap(~ Variable, scales = 'free') + xlab('Value | Others') + ylab('Variate | Others') + geom_smooth(method = 'lm', se = FALSE, formula = y ~ x, colour = ifelse(!is.na(smooth_colour), smooth_colour, "#3366FF")) + ggpmisc::stat_poly_eq(formula = y ~ x, aes(label = paste(..rr.label.., sep = "~~~")), parse = TRUE)
+}
+
 mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = FALSE) {
   stopifnot(is.data.table(dat))
   dflt_col <- default_flag

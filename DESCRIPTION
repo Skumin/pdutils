@@ -21,7 +21,10 @@ Imports:
     pROC,
     Hmisc,
     stringi,
-    lubridate
+    lubridate,
+    anytime,
+    car,
+    ggpmisc
 LinkingTo:
     Rcpp,
     RcppArmadillo,

@@ -7,6 +7,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // mutate_deleq
 NumericMatrix mutate_deleq(NumericMatrix mat, NumericMatrix boxbounds, double fParam);
 RcppExport SEXP _pdutils_mutate_deleq(SEXP matSEXP, SEXP boxboundsSEXP, SEXP fParamSEXP) {

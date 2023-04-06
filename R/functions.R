@@ -302,6 +302,8 @@ create_default_flag <- function(dff, id, date_col, default_status, default_flag_
   defs <- defs[!is.na(dflt)]
   defs <- split(defs, by = "identifier")
 
+  pb <- txtProgressBar(max = length(defs), initial = 0, style = 3)
+  setTxtProgressBar(pb, 0)
   for (i in seq_along(defs)) {
     defs[[i]][, eval(default_flag_name) := integer(nrow(defs[[i]]))]
     for (j in seq_len(nrow(defs[[i]]))) {
@@ -310,7 +312,9 @@ create_default_flag <- function(dff, id, date_col, default_status, default_flag_
         defs[[i]][j, eval(default_flag_name) := 1]
       }
     }
+    setTxtProgressBar(pb, i)
   }
+  close(pb)
 
   ## Rbind and merge
   defs <- rbindlist(defs)

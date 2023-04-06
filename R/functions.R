@@ -246,7 +246,12 @@ added_variable_plots <- function(mdl, point_colour = NA, smooth_colour = NA) {
   }
   mdls <- rbindlist(mdls)
   mdls[, Variable := factor(Variable, unique(Variable))]
-  ggplot(mdls, aes_string('value', colnames(mdls)[2])) + geom_point(colour = ifelse(!is.na(point_colour), point_colour, 'black')) + facet_wrap(~ Variable, scales = 'free') + xlab('Value | Others') + ylab('Variate | Others') + geom_smooth(method = 'lm', se = FALSE, formula = y ~ x, colour = ifelse(!is.na(smooth_colour), smooth_colour, "#3366FF")) + ggpmisc::stat_poly_eq(formula = y ~ x, aes(label = paste(..rr.label.., sep = "~~~")), parse = TRUE)
+  ggplot(mdls, aes_string('value', colnames(mdls)[2])) +
+    geom_point(colour = ifelse(!is.na(point_colour), point_colour, 'black')) +
+    facet_wrap(~ Variable, scales = 'free') + xlab('Value | Others') +
+    ylab('Variate | Others') +
+    geom_smooth(method = 'lm', se = FALSE, formula = y ~ x, colour = ifelse(!is.na(smooth_colour), smooth_colour, "#3366FF")) +
+    ggpmisc::stat_poly_eq(formula = y ~ x, aes(label = paste(..rr.label.., sep = "~~~")), parse = TRUE)
 }
 
 mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = FALSE) {
@@ -273,38 +278,51 @@ mann_whitney <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = FALSE) 
   return(output)
 }
 
-create_default_flag <- function(dff, id, date_col, default_status, default_flag_name = 'default_flag', horizon = 1) {
+create_default_flag <- function(dff, id, date_col, default_status, default_flag_name = "default_flag", horizon = 1) {
   stopifnot(is.data.table(dff))
 
   tmp <- copy(dff[, c(id, date_col, default_status), with = FALSE])
   tmp[, num_col := .I]
   setorderv(tmp, cols = c(date_col, id))
 
-  defs <- data.table::CJ(Date = sort(unique(tmp[, get(eval(date_col))])), identifier = sort(unique(tmp[, get(eval(id))])))
-  defs <- merge(tmp[, c(date_col, id, default_status), with = FALSE], defs, by.x = c(date_col, id), by.y = c('Date', 'identifier'), all = TRUE)
-  colnames(defs) <- c('Date', 'identifier', 'dflt')
+  ## All cases (dates x ID combos)
+  defs <- data.table::CJ(
+    Date = sort(unique(tmp[, get(eval(date_col))])), identifier = sort(unique(tmp[, get(eval(id))]))
+  )
+  defs <- merge(
+    tmp[, c(date_col, id, default_status), with = FALSE],
+    defs,
+    by.x = c(date_col, id), by.y = c("Date", "identifier"), all = TRUE
+  )
+  colnames(defs) <- c("Date", "identifier", "dflt")
   setorder(defs, Date, identifier)
+
+  ## Look only at defaulted ones
   defs <- defs[identifier %in% defs[dflt == 1, identifier]]
   defs <- defs[!is.na(dflt)]
-  defs <- split(defs, by = 'identifier')
+  defs <- split(defs, by = "identifier")
 
-  for(i in seq_along(defs)) {
+  for (i in seq_along(defs)) {
     defs[[i]][, eval(default_flag_name) := integer(nrow(defs[[i]]))]
-    for(j in seq_len(nrow(defs[[i]]))) {
+    for (j in seq_len(nrow(defs[[i]]))) {
       date_row <- defs[[i]][j, Date]
-      if(any(defs[[i]][(Date >= date_row) & (Date < (date_row + 370 * horizon)), dflt] == 1)) {
+      if (any(defs[[i]][(Date >= date_row) & (Date < (date_row + 370 * horizon)), dflt] == 1)) {
         defs[[i]][j, eval(default_flag_name) := 1]
       }
     }
   }
 
+  ## Rbind and merge
   defs <- rbindlist(defs)
-  tmp <- merge(tmp, defs[, c('Date', 'identifier', default_flag_name), with = FALSE], by.x = c(date_col, id), by.y = c('Date', 'identifier'), all.x = TRUE)
+  tmp <- merge(
+    tmp,
+    defs[, c("Date", "identifier", default_flag_name), with = FALSE],
+    by.x = c(date_col, id), by.y = c("Date", "identifier"), all.x = TRUE
+  )
   rm(defs)
 
-  tmp[, defaulted := NULL]
   tmp[is.na(get(eval(default_flag_name))), eval(default_flag_name) := 0]
-  tmp <- merge(dff, tmp, by = c(id, date_col))
+  tmp <- merge(dff[, -c(default_status), with = FALSE], tmp, by = c(id, date_col))
   setorder(tmp, num_col)
   tmp[, num_col := NULL]
 

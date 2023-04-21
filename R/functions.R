@@ -451,7 +451,6 @@ kolmogorov_smirnov <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = F
 ar_compare <- function(dat, pd_name1, pd_name2, default_flag = "dumdef1", na.rm = FALSE) {
   stopifnot(is.data.table(dat))
   stopifnot(pd_name1 %in% names(dat), pd_name2 %in% names(dat), default_flag %in% names(dat))
-  stopifnot(dat[, sort(unique(get(eval(default_flag)))) == c(0, 1)])
 
   .dflt_col <- default_flag
   tmp <- copy(dat[, c(pd_name1, pd_name2, .dflt_col), with = FALSE])

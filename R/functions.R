@@ -448,10 +448,24 @@ kolmogorov_smirnov <- function(dat, pd_name, default_flag = 'dumdef1', na.rm = F
   return(data.frame(x_pos = x_max, y_min = y_val[2], y_max = y_val[1], ks_stat = y_val[1] - y_val[2], p_val = ks.test(defs, nondefs)$p.val))
 }
 
-ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
+ar_compare <- function(dat, pd_name1, pd_name2, default_flag = "dumdef1", na.rm = FALSE) {
   stopifnot(is.data.table(dat))
+  stopifnot(pd_name1 %in% names(dat), pd_name2 %in% names(dat), default_flag %in% names(dat))
+  stopifnot(dat[, sort(unique(get(eval(default_flag)))) == c(0, 1)])
+
   .dflt_col <- default_flag
   tmp <- copy(dat[, c(pd_name1, pd_name2, .dflt_col), with = FALSE])
+
+  fltr <- complete.cases(tmp)
+
+  if (nrow(tmp[fltr]) < nrow(dat)) {
+    if (!na.rm) {
+      stop("There are missing values in the data but `na.rm` is FALSE.")
+    } else {
+      tmp <- tmp[fltr]
+    }
+  }
+
   MW1 <- mann_whitney(tmp, pd_name1, .dflt_col)
   MW2 <- mann_whitney(tmp, pd_name2, .dflt_col)
   allobs <- nrow(tmp)
@@ -502,7 +516,9 @@ ar_compare <- function(dat, pd_name1, pd_name2, default_flag = 'dumdef1') {
   AR1 <- 2 * MW1 - 1
   AR2 <- 2 * MW2 - 1
   diff <- AR1 - AR2
+
   output <- data.frame(Group = c("all"), N = allobs, Ndef = defaults, AR1, AR2, diff, p.value = p)
+
   return(output)
 }
 

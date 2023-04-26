@@ -1,33 +1,5 @@
 # Various functions to measure predictive power of models
 ## The Mann-Whitney U test statistics, also known as the two-sample Wilcoxon test statistic. Equal to the AUC
-mann_whitney <- function(dat, pd_name, default_flag = "dumdef1", na.rm = FALSE) {
-  stopifnot(is.data.table(dat))
-
-  dflt_col <- default_flag
-  tmp <- copy(dat[, c(pd_name, dflt_col), with = FALSE])
-
-  if (any(!sort(unique(unlist(tmp[, 2]))) %in% c(0, 1))) {
-    stop("The default_flag column must only contains 0s and 1s.")
-  }
-
-  if (sum(complete.cases(tmp)) != nrow(tmp)) {
-    if (!na.rm) {
-      stop("There are NAs in the two columns and na.rm is FALSE.")
-    } else {
-      tmp <- tmp[complete.cases(tmp)]
-    }
-  }
-
-  allobs <- nrow(tmp)
-  defaults <- as.numeric(tmp[, sum(get(eval(dflt_col)))])
-  tmp[, ranker := data.table::frank(get(eval(pd_name)), ties.method = "average")]
-  output <- (
-    as.numeric(tmp[get(eval(dflt_col)) == 1, sum(ranker)]) - defaults * (defaults + 1) / 2
-  ) / defaults / (allobs - defaults)
-
-  return(output)
-}
-
 mann_whitney_vec <- function(pds, default_flag, na.rm = FALSE) {
   if (any(!sort(unique(default_flag)) %in% c(0, 1))) {
     stop("The default_flag column must only contains 0s and 1s.")
@@ -53,6 +25,26 @@ mann_whitney_vec <- function(pds, default_flag, na.rm = FALSE) {
   output <- (sum(ranker[default_flag == 1]) - defaults * (defaults + 1) / 2) / defaults / (allobs - defaults)
 
   return(output)
+}
+
+mann_whitney <- function(dat, pd_name, default_flag = "dumdef1", na.rm = FALSE) {
+  stopifnot(is.data.frame(dat))
+
+  nms <- names(dat)
+  stopifnot(pd_name %chin% nms, default_flag %chin% nms)
+
+  if (is.data.table(dat)) {
+    pd_name_tmp <- pd_name
+    default_flag_tmp <- default_flag
+
+    pds <- dat[, get(eval(pd_name_tmp))]
+    dflt <- dat[, get(eval(default_flag_tmp))]
+  } else {
+    pds <- dat[, pd_name]
+    dflt <- dat[, default_flag]
+  }
+
+  return(mann_whitney_vec(pds, dflt, na.rm = na.rm))
 }
 
 mann_whitney_multiclass <- function(dat, pred, resp, na.rm = FALSE) {

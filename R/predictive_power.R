@@ -5,23 +5,29 @@ mann_whitney_vec <- function(pds, default_flag, na.rm = FALSE) {
     stop("The default_flag column must only contains 0s and 1s.")
   }
 
-  if (length(pds) != length(default_flag)) {
+  allobs <- length(pds)
+
+  if (allobs != length(default_flag)) {
     stop("pds and default_flag must have the same length.")
   }
 
-  if (sum(is.na(pds)) > 0 | sum(is.na(default_flag)) > 0) {
+  dflt_na <- is.na(default_flag)
+  pds_na <- is.na(pds)
+
+  if (any(pds_na) | any(dflt_na)) {
     if (!na.rm) {
       stop("There are NAs in the two columns and na.rm is FALSE.")
     } else {
-      ids <- union(which(is.na(pds)), which(is.na(default_flag)))
+      ids <- union(which(pds_na), which(dflt_na))
       pds <- pds[-ids]
       default_flag <- default_flag[-ids]
     }
   }
 
-  allobs <- length(pds)
   defaults <- sum(default_flag)
   ranker <- data.table::frank(pds, ties.method = "average")
+
+  # This is "Method 2" from here: https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test#Calculations
   output <- (sum(ranker[default_flag == 1]) - defaults * (defaults + 1) / 2) / defaults / (allobs - defaults)
 
   return(output)

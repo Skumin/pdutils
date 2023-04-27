@@ -18,7 +18,7 @@ mann_whitney_vec <- function(pds, default_flag, na.rm = FALSE) {
     if (!na.rm) {
       stop("There are NAs in the two columns and na.rm is FALSE.")
     } else {
-      ids <- union(which(pds_na), which(dflt_na))
+      ids <- which(pds_na | dflt_na)
       pds <- pds[-ids]
       default_flag <- default_flag[-ids]
     }

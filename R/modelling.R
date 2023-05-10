@@ -213,7 +213,7 @@ psi <- function(x1, x2) {
   return(as.data.frame(tst))
 }
 
-create_default_flag <- function(dff, id, date_col, default_status, default_flag_name = "default_flag", horizon = 1) {
+create_default_flag <- function(dff, id, date_col, default_status, default_flag_name = "default_flag", horizon = 1, quiet = FALSE) {
   stopifnot(is.data.table(dff))
 
   tmp <- copy(dff[, c(id, date_col, default_status), with = FALSE])
@@ -237,19 +237,31 @@ create_default_flag <- function(dff, id, date_col, default_status, default_flag_
   defs <- defs[!is.na(dflt)]
   defs <- split(defs, by = "identifier")
 
-  pb <- txtProgressBar(max = length(defs), initial = 0, style = 3)
-  setTxtProgressBar(pb, 0)
-  for (i in seq_along(defs)) {
-    defs[[i]][, eval(default_flag_name) := integer(nrow(defs[[i]]))]
-    for (j in seq_len(nrow(defs[[i]]))) {
-      date_row <- defs[[i]][j, Date]
-      if (any(defs[[i]][(Date >= date_row) & (Date < (date_row + 370 * horizon)), dflt] == 1)) {
-        defs[[i]][j, eval(default_flag_name) := 1]
+  if (!quiet) {
+    pb <- txtProgressBar(max = length(defs), initial = 0, style = 3)
+    setTxtProgressBar(pb, 0)
+    for (i in seq_along(defs)) {
+      defs[[i]][, eval(default_flag_name) := integer(nrow(defs[[i]]))]
+      for (j in seq_len(nrow(defs[[i]]))) {
+        date_row <- defs[[i]][j, Date]
+        if (any(defs[[i]][(Date >= date_row) & (Date < (date_row + 370 * horizon)), dflt] == 1)) {
+          defs[[i]][j, eval(default_flag_name) := 1]
+        }
+      }
+      setTxtProgressBar(pb, i)
+    }
+    close(pb)
+  } else {
+    for (i in seq_along(defs)) {
+      defs[[i]][, eval(default_flag_name) := integer(nrow(defs[[i]]))]
+      for (j in seq_len(nrow(defs[[i]]))) {
+        date_row <- defs[[i]][j, Date]
+        if (any(defs[[i]][(Date >= date_row) & (Date < (date_row + 370 * horizon)), dflt] == 1)) {
+          defs[[i]][j, eval(default_flag_name) := 1]
+        }
       }
     }
-    setTxtProgressBar(pb, i)
   }
-  close(pb)
 
   ## Rbind and merge
   defs <- rbindlist(defs)

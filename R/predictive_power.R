@@ -181,34 +181,53 @@ ar_compare <- function(dat, pd_name1, pd_name2, default_flag = "dumdef1", na.rm 
 }
 
 ## The confidence interval for the AR
-ar_ci <- function(dat, pd_name, default_flag = "dumdef1", conf_level = 0.95, na.rm = FALSE) {
-  stopifnot(is.data.table(dat))
+ar_ci_vec <- function(pds, default_flag, conf_level = 0.95, na.rm = FALSE) {
+  dflt_na <- is.na(default_flag)
+  pds_na <- is.na(pds)
 
-  .dflt_col <- default_flag
-  tmp <- copy(dat[, c(pd_name, .dflt_col), with = FALSE])
-
-  if (sum(complete.cases(tmp)) != nrow(tmp)) {
+  if (any(pds_na) | any(dflt_na)) {
     if (!na.rm) {
       stop("There are NAs in the two columns and na.rm is FALSE.")
     } else {
-      tmp <- tmp[complete.cases(tmp)]
+      ids <- which(pds_na | dflt_na)
+      pds <- pds[-ids]
+      default_flag <- default_flag[-ids]
     }
   }
 
-  if (length(unique(tmp[, get(eval(.dflt_col))])) == 1) {
+  if (length(unique(default_flag)) == 1L) {
     return(as.numeric(c(NA, NA)))
   }
 
-  roc_profile <- pROC::roc(tmp[, get(eval(.dflt_col))], tmp[, get(eval(pd_name))], quiet = TRUE, direction = "<")
+  ## Get the DeLong variance; note that `delong_auc_variance` returns the variance of the AUC, not the AR,
+  ## so we need to reflect that
+  auc_var <- delong_auc_variance(pds, default_flag, na.rm = FALSE)
+  ar_sd <- 2 * sqrt(auc_var)
+  ar_mid <- AR_vec(pds, default_flag)
 
-  if (as.numeric(roc_profile$auc) == 1) {
-    return(c(1, 1))
+  vals <- qnorm(c((1 - conf_level) / 2, 1 - (1 - conf_level) / 2), mean = ar_mid, sd = ar_sd)
+
+  return(pmax(pmin(vals, 1), 0))
+}
+
+ar_ci <- function(dat, pd_name, default_flag = "dumdef1", conf_level = 0.95, na.rm = FALSE) {
+  stopifnot(is.data.frame(dat))
+
+  nms <- names(dat)
+  stopifnot(pd_name %chin% nms, default_flag %chin% nms)
+
+  if (is.data.table(dat)) {
+    pd_name_tmp <- pd_name
+    default_flag_tmp <- default_flag
+
+    pds <- dat[, get(eval(pd_name_tmp))]
+    dflt <- dat[, get(eval(default_flag_tmp))]
+  } else {
+    pds <- dat[, pd_name]
+    dflt <- dat[, default_flag]
   }
 
-  cis <- pROC::ci.auc(roc_profile, conf.level = conf_level, quiet = TRUE)
-  cis <- as.numeric(cis)[-2]
-
-  return(pmax(pmin(c(2 * cis[1] - 1, 2 * cis[2] - 1), 1), 0))
+  return(ar_ci_vec(pds, dflt, na.rm = na.rm))
 }
 
 ## The KS test for the difference between two distributions (testing the difference between two ECDFs)

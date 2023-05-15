@@ -1,5 +1,5 @@
 ## Calculates the variance of the AUC using DeLong's algorithm
-## This specific version is taken from https://doi.org/10.1109/LSP.2014.2337313
+## This specific version is based on https://doi.org/10.1109/LSP.2014.2337313
 delong_auc_variance <- function(pds, default_flag, na.rm = FALSE) {
   stopifnot(class(pds) == "numeric")
   stopifnot(class(default_flag) == "integer" | class(default_flag) == "numeric")

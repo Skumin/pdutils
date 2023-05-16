@@ -67,6 +67,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// delong_placements
+List delong_placements(NumericVector pds_def, NumericVector pds_nondef);
+RcppExport SEXP _pdutils_delong_placements(SEXP pds_defSEXP, SEXP pds_nondefSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type pds_def(pds_defSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type pds_nondef(pds_nondefSEXP);
+    rcpp_result_gen = Rcpp::wrap(delong_placements(pds_def, pds_nondef));
+    return rcpp_result_gen;
+END_RCPP
+}
 // pt_multi_pd
 double pt_multi_pd(int nums, int defs, double rho, double tau, int pers, double ci, int simulations);
 RcppExport SEXP _pdutils_pt_multi_pd(SEXP numsSEXP, SEXP defsSEXP, SEXP rhoSEXP, SEXP tauSEXP, SEXP persSEXP, SEXP ciSEXP, SEXP simulationsSEXP) {
@@ -107,6 +119,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_pdutils_project_population", (DL_FUNC) &_pdutils_project_population, 3},
     {"_pdutils_gen_init_pop", (DL_FUNC) &_pdutils_gen_init_pop, 4},
     {"_pdutils_gen_init_pop_x0", (DL_FUNC) &_pdutils_gen_init_pop_x0, 5},
+    {"_pdutils_delong_placements", (DL_FUNC) &_pdutils_delong_placements, 2},
     {"_pdutils_pt_multi_pd", (DL_FUNC) &_pdutils_pt_multi_pd, 7},
     {"_pdutils_pt_multi_pd_full", (DL_FUNC) &_pdutils_pt_multi_pd_full, 7},
     {NULL, NULL, 0}

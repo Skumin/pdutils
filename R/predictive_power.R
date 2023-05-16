@@ -16,7 +16,7 @@ mann_whitney_vec <- function(pds, default_flag, na.rm = FALSE) {
 
   if (any(pds_na) | any(dflt_na)) {
     if (!na.rm) {
-      stop("There are NAs in the two columns and na.rm is FALSE.")
+      stop("There are NAs in the two vectors and na.rm is FALSE.")
     } else {
       ids <- which(pds_na | dflt_na)
       pds <- pds[-ids]
@@ -25,7 +25,7 @@ mann_whitney_vec <- function(pds, default_flag, na.rm = FALSE) {
   }
 
   defaults <- sum(default_flag)
-  ranker <- data.table::frank(pds, ties.method = "average")
+  ranker <- frank(pds, ties.method = "average")
 
   # This is "Method 2" from here: https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test#Calculations
   output <- (sum(ranker[default_flag == 1]) - defaults * (defaults + 1) / 2) / defaults / (allobs - defaults)
@@ -106,88 +106,47 @@ AR_vec <- function(pds, default_flag, na.rm = FALSE) {
   return(mann_whitney_vec(pds = pds, default_flag = default_flag, na.rm = na.rm) * 2 - 1)
 }
 
-## Compares the ARs of two models. This is "very close" to the DeLong test of AUC differences
-ar_compare <- function(dat, pd_name1, pd_name2, default_flag = "dumdef1", na.rm = FALSE) {
+## Compares the ARs of two models
+ar_compare <- function(dat, pd_name1, pd_name2, default_flag = "dumdef1", conf_level = 0.95, na.rm = FALSE) {
+  stopifnot(conf_level > 0 & conf_level < 1)
   stopifnot(is.data.table(dat))
   stopifnot(pd_name1 %in% names(dat), pd_name2 %in% names(dat), default_flag %in% names(dat))
 
   .dflt_col <- default_flag
-  tmp <- copy(dat[, c(pd_name1, pd_name2, .dflt_col), with = FALSE])
+  .tmp <- copy(dat[, c(pd_name1, pd_name2, .dflt_col), with = FALSE])
 
-  fltr <- complete.cases(tmp)
+  fltr <- complete.cases(.tmp)
 
-  if (nrow(tmp[fltr]) < nrow(dat)) {
+  if (nrow(.tmp[fltr]) < nrow(dat)) {
     if (!na.rm) {
       stop("There are missing values in the data but `na.rm` is FALSE.")
     } else {
-      tmp <- tmp[fltr]
+      .tmp <- .tmp[fltr]
     }
   }
 
-  MW1 <- mann_whitney(tmp, pd_name1, .dflt_col)
-  MW2 <- mann_whitney(tmp, pd_name2, .dflt_col)
-  allobs <- nrow(tmp)
-  defaults <- as.numeric(tmp[, sum(get(eval(.dflt_col)))])
-  nodefaults <- allobs - defaults
+  test_result <- delong_paired_test(
+    .tmp[, get(eval(pd_name1))], .tmp[, get(eval(pd_name2))], .tmp[, get(eval(default_flag))], conf_level = conf_level,
+    test_what = "AR"
+  )
 
-  setorderv(tmp, pd_name1)
-  tmp[, rank1 := .I]
-  setorderv(tmp, pd_name2)
-  tmp[, rank2 := .I]
-
-  data.default <- copy(tmp[get(eval(.dflt_col)) == 1])
-  data.nodefault <- copy(tmp[get(eval(.dflt_col)) == 0])
-
-  data.default[, rank2.d := .I]
-  setorderv(data.default, pd_name1)
-  data.default[, rank1.d := .I]
-
-  setorderv(data.nodefault, pd_name1)
-  data.nodefault[, rank1.nd := .I]
-  setorderv(data.nodefault, pd_name2)
-  data.nodefault[, rank2.nd := .I]
-
-  data.default[, V1_central := (rank1 - rank1.d)/nodefaults - MW1]
-  data.default[, V2_central := (rank2 - rank2.d)/nodefaults - MW2]
-
-  data.default[, s11 := V1_central^2]
-  data.default[, s22 := V2_central^2]
-  data.default[, s21 := V1_central * V2_central]
-
-  data.nodefault[, V1_central := (rank1 - rank1.nd)/defaults - MW1]
-  data.nodefault[, V2_central := (rank2 - rank2.nd)/defaults - MW2]
-
-  data.nodefault[, s11 := V1_central^2]
-  data.nodefault[, s22 := V2_central^2]
-  data.nodefault[, s21 := V1_central * V2_central]
-
-  s1d <- as.numeric(data.default[, sum(s11)])/(defaults - 1)
-  s2d <- as.numeric(data.default[, sum(s22)])/(defaults - 1)
-  s12d <- as.numeric(data.default[, sum(s21)])/(defaults - 1)
-
-  s1nd <- as.numeric(data.nodefault[, sum(s11)])/(nodefaults - 1)
-  s2nd <- as.numeric(data.nodefault[, sum(s22)])/(nodefaults - 1)
-  s12nd <- as.numeric(data.nodefault[, sum(s21)])/(nodefaults - 1)
-
-  Var <- (s1d/defaults + s1nd/nodefaults) + (s2d/defaults + s2nd/nodefaults) - 2 * (s12d/defaults + s12nd/nodefaults)
-  p <- 1 - pchisq((MW1 - MW2)^2/Var, 1)
-  AR1 <- 2 * MW1 - 1
-  AR2 <- 2 * MW2 - 1
-  diff <- AR1 - AR2
-
-  output <- data.frame(Group = c("all"), N = allobs, Ndef = defaults, AR1, AR2, diff, p.value = p)
-
+  output <- data.frame(
+    Group = c("all"), N = nrow(.tmp), Ndef = .tmp[, sum(get(eval(default_flag)))], AR1 = test_result$metrics[1],
+    AR2 = test_result$metrics[1], diff = -diff(test_result$metrics), p.value = test_result$p_value
+  )
   return(output)
 }
 
 ## The confidence interval for the AR
 ar_ci_vec <- function(pds, default_flag, conf_level = 0.95, na.rm = FALSE) {
+  stopifnot(conf_level > 0 & conf_level < 1)
+
   dflt_na <- is.na(default_flag)
   pds_na <- is.na(pds)
 
   if (any(pds_na) | any(dflt_na)) {
     if (!na.rm) {
-      stop("There are NAs in the two columns and na.rm is FALSE.")
+      stop("There are NAs in the two vectors and na.rm is FALSE.")
     } else {
       ids <- which(pds_na | dflt_na)
       pds <- pds[-ids]

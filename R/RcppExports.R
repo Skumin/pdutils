@@ -17,6 +17,10 @@ gen_init_pop_x0 <- function(NP, boxbounds, Emat, constr, x0) {
     .Call('_pdutils_gen_init_pop_x0', PACKAGE = 'pdutils', NP, boxbounds, Emat, constr, x0)
 }
 
+delong_placements <- function(pds_def, pds_nondef) {
+    .Call('_pdutils_delong_placements', PACKAGE = 'pdutils', pds_def, pds_nondef)
+}
+
 pt_multi_pd <- function(nums, defs, rho, tau, pers, ci, simulations) {
     .Call('_pdutils_pt_multi_pd', PACKAGE = 'pdutils', nums, defs, rho, tau, pers, ci, simulations)
 }

@@ -34,7 +34,7 @@ bucket <- function(x, bins, na.rm = FALSE) {
 avPlots_invis <- function(mdl, ...) {
   ff <- tempfile()
   png(filename = ff)
-  out <- car::avPlots(mdl, ...)
+  out <- avPlots(mdl, ...)
   dev.off()
   unlink(ff)
 
@@ -61,7 +61,7 @@ added_variable_plots <- function(mdl, point_colour = NA, smooth_colour = NA) {
     geom_smooth(
       method = "lm", se = FALSE, formula = y ~ x, colour = ifelse(!is.na(smooth_colour), smooth_colour, "#3366FF")
     ) +
-    ggpmisc::stat_poly_eq(formula = y ~ x, aes(label = paste(..rr.label.., sep = "~~~")), parse = TRUE)
+    stat_poly_eq(formula = y ~ x, aes(label = paste(..rr.label.., sep = "~~~")), parse = TRUE)
 }
 
 get_column_type <- function(dt, col_type) {
@@ -86,7 +86,7 @@ weighted_mean_ci <- function(x, weights, conf_level = 0.95, na.rm = FALSE) {
   wts <- weights[!is.na(x)]
   y <- x[!is.na(x)]
   nx <- length(y)
-  vx <- Hmisc::wtd.var(y, wts, normwt = TRUE)
+  vx <- wtd.var(y, wts, normwt = TRUE)
   tstat <- weighted.mean(y, wts) / sqrt(vx / nx)
   cint <- qt(1 - (1 - conf_level)/2, nx - 1)
   cint <- tstat + c(- cint, cint)

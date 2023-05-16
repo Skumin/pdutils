@@ -101,7 +101,7 @@ minimodel_plot <- function(
     ylab("Default rate") +
     theme_minimal() +
     theme(legend.position = "none") +
-    scale_y_continuous(labels = scales::percent)
+    scale_y_continuous(labels = percent)
 
   dff1 <- melt(dff[, c("var", "defrate", "loesspd")], id.vars = "var")
 
@@ -113,14 +113,14 @@ minimodel_plot <- function(
     ylab(NULL) +
     theme_minimal() +
     theme(legend.position = "none") +
-    scale_y_continuous(labels = scales::percent)
+    scale_y_continuous(labels = percent)
 
   lay <- rbind(c(1, 1), c(2, 3))
 
   if (perconly) {
     return(plt2)
   } else {
-    return(gridExtra::grid.arrange(plt1, plt2, plt3, nrow = 2, layout_matrix = lay))
+    return(grid.arrange(plt1, plt2, plt3, nrow = 2, layout_matrix = lay))
   }
 }
 
@@ -164,7 +164,7 @@ minimodel_plot_list <- function(dat, var, numbins = 50, span = 0.5, default_flag
     ylab("Default rate") +
     theme_minimal() +
     theme(legend.position = "none") +
-    scale_y_continuous(labels = scales::percent)
+    scale_y_continuous(labels = percent)
 
   dff1 <- melt(dff[, c("var", "defrate", "loesspd")], id.vars = "var")
 
@@ -176,14 +176,14 @@ minimodel_plot_list <- function(dat, var, numbins = 50, span = 0.5, default_flag
     ylab(NULL) +
     theme_minimal() +
     theme(legend.position = "none") +
-    scale_y_continuous(labels = scales::percent)
+    scale_y_continuous(labels = percent)
 
   return(list(plt1, plt2, plt3))
 }
 
 create_dummy_sample <- function(size, mean_pd, ar_target) {
   tmp <- data.table(pdo = pnorm(rnorm(size, qnorm(mean_pd), 1)))
-  tmp[, pd := LDPD::QMMRecalibrate(mean_pd, pdo, rep(1, size), AR.target = ar_target)$condPD.ac]
+  tmp[, pd := QMMRecalibrate(mean_pd, pdo, rep(1, size), AR.target = ar_target)$condPD.ac]
   tmp[, default := rbinom(size, 1, pd)]
   tmp[, pdo := NULL]
   tmp <- tmp[sample(seq_len(size), size, replace = FALSE)]
@@ -213,7 +213,9 @@ psi <- function(x1, x2) {
   return(as.data.frame(tst))
 }
 
-create_default_flag <- function(dff, id, date_col, default_status, default_flag_name = "default_flag", horizon = 1, quiet = FALSE) {
+create_default_flag <- function(
+    dff, id, date_col, default_status, default_flag_name = "default_flag", horizon = 1, quiet = FALSE
+) {
   stopifnot(is.data.table(dff))
 
   tmp <- copy(dff[, c(id, date_col, default_status), with = FALSE])
@@ -221,7 +223,7 @@ create_default_flag <- function(dff, id, date_col, default_status, default_flag_
   setorderv(tmp, cols = c(date_col, id))
 
   ## All cases (dates x ID combos)
-  defs <- data.table::CJ(
+  defs <- CJ(
     Date = sort(unique(tmp[, get(eval(date_col))])), identifier = sort(unique(tmp[, get(eval(id))]))
   )
   defs <- merge(

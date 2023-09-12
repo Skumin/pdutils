@@ -132,7 +132,7 @@ ar_compare <- function(dat, pd_name1, pd_name2, default_flag = "dumdef1", conf_l
 
   output <- data.frame(
     Group = c("all"), N = nrow(.tmp), Ndef = .tmp[, sum(get(eval(default_flag)))], AR1 = test_result$metrics[1],
-    AR2 = test_result$metrics[1], diff = -diff(test_result$metrics), p.value = test_result$p_value
+    AR2 = test_result$metrics[2], diff = -diff(test_result$metrics), p.value = test_result$p_value
   )
   return(output)
 }
